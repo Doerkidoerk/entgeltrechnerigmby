@@ -1,0 +1,1 @@
+# Entgeltrechner (Monorepo: Frontend + API)
