@@ -40,7 +40,8 @@ async function loadAllTables() {
       const json = JSON.parse(buf);
 
       // einfache Strukturprüfung (EG-Schlüssel erwartet)
-      if (typeof json !== "object" || Array.isArray(json)) {
+      // JSON.parse kann `null` zurückgeben, was ebenfalls kein gültiges Tabellen-Objekt ist
+      if (json === null || typeof json !== "object" || Array.isArray(json)) {
         throw new Error(`Ungültiges JSON-Format in ${file}`);
       }
       map[key] = json;
