@@ -84,23 +84,14 @@
         </div>
       </div>
 
-      <div class="field two">
-        <div>
-          <label for="urlaubsanspruchTage">Urlaubsanspruch (Tage)</label>
-          <select id="urlaubsanspruchTage">
-            <option>20</option><option>25</option><option selected>30</option>
-            <option>35</option><option>40</option>
-          </select>
+      <div class="field">
+        <div class="label-row">
+          <label for="urlaubstage">Urlaubstage</label>
+          <span class="badge" id="urlaubBadge">30 Tage</span>
         </div>
-        <div>
-          <div class="label-row">
-            <label for="urlaubstage">Urlaubstage für Berechnung</label>
-            <span class="badge" id="urlaubBadge">0 Tage</span>
-          </div>
-          <div class="combo">
-            <input id="urlaubstage" type="number" min="0" max="30" step="1" value="0" />
-            <input id="urlaubstageRange" class="range" type="range" min="0" max="30" step="1" value="0" />
-          </div>
+        <div class="combo">
+          <input id="urlaubstage" type="number" min="0" max="36" step="1" value="30" />
+          <input id="urlaubstageRange" class="range" type="range" min="0" max="36" step="1" value="30" />
         </div>
       </div>
 
