@@ -47,15 +47,6 @@ h1{font-size:1.25rem;margin:0}
 .small{font-size:.9rem}
 .muted{color:var(--muted)}
 
-.kpi-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:16px 0 22px}
-.kpi{background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0));border:1px solid var(--line);border-radius:16px;padding:14px 16px;backdrop-filter:saturate(140%) blur(6px);box-shadow:var(--shadow);transition:transform .12s ease}
-.kpi:hover{transform: translateY(-2px)}
-.kpi-label{font-size:.82rem;color:var(--muted)}
-.kpi-value{font-size:1.5rem;font-weight:800;margin-top:4px}
-.skeleton .kpi-value{position:relative;color:transparent}
-.skeleton .kpi-value::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);animation:shimmer 1.2s infinite}
-@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-
 /* ==== Cards ==== */
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);backdrop-filter:saturate(140%) blur(8px)}
 .subgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}

@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
     status: $("status"), tablesInfo: $("tablesInfo"),
     irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
-    result: $("result"), kpiMonth: $("kpiMonth"), kpiYear: $("kpiYear"), kpiAvg: $("kpiAvg"),
+    result: $("result"),
     calcBtn: $("calcBtn"), resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
     compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
     cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
   const fmtPct = n => Number(n).toFixed(2) + " %";
   const fmtHours = n => Number(n).toFixed(1) + " h";
+  let lastTotals = null;
 
   // Helpers
   function setStatus(text, cls){ els.status.textContent = text; els.status.className = `pill ${cls||""}`.trim(); }
@@ -151,20 +152,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const r = await fetch("/api/calc",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
       if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.error || `HTTP ${r.status}`); }
       const data = await r.json();
-      renderKPIs(data); renderResult(data); maybeCompare(data);
+      renderResult(data); maybeCompare(data);
+      lastTotals = data.totals;
       setStatus("OK","ok");
-      document.querySelectorAll(".kpi").forEach(k => k.classList.remove("skeleton"));
     }catch(e){
       els.result.innerHTML = `<div class="alert">Fehler: ${e.message}</div>`;
       setStatus("Fehler","err");
     }
   }
 
-  function renderKPIs(d){
-    els.kpiMonth.textContent = fmtEUR.format(d.totals.monat);
-    els.kpiYear.textContent  = fmtEUR.format(d.totals.jahr);
-    els.kpiAvg.textContent   = fmtEUR.format(d.totals.durchschnittMonat);
-  }
   function renderResult(d){
     const b = d.breakdown, t = d.totals;
     els.result.innerHTML = `
@@ -202,8 +198,11 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
   function saveSnapshot(){
+    if (!lastTotals) return;
     localStorage.setItem("rechner.snapshot.kpis", JSON.stringify({
-      month: els.kpiMonth.textContent, year: els.kpiYear.textContent, avg: els.kpiAvg.textContent
+      month: fmtEUR.format(lastTotals.monat),
+      year: fmtEUR.format(lastTotals.jahr),
+      avg: fmtEUR.format(lastTotals.durchschnittMonat)
     }));
     toast("Snapshot gespeichert");
     maybeCompare();
