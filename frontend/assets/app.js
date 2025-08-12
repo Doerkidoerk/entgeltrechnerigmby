@@ -212,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     els.cmpNowMonth.textContent = fmtEUR.format(t.monat);
     els.cmpNowYear.textContent  = fmtEUR.format(t.jahr);
     els.cmpNowAvg.textContent   = fmtEUR.format(t.durchschnittMonat);
-    const p = s => Number(String(s).replace(/[^\d,.-]/g,'').replace('.', '').replace(',', '.'));
+    const p = s => Number(String(s).replace(/[^\d,.-]/g,'').replace(/\./g, '').replace(',', '.'));
     const dM = p(els.cmpNowMonth.textContent)-p(snap.month);
     const dY = p(els.cmpNowYear.textContent)-p(snap.year);
     const dA = p(els.cmpNowAvg.textContent)-p(snap.avg);
