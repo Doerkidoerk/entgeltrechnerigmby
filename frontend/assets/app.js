@@ -104,11 +104,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const egKey = els.eg.value;
     const egObj = (table && table[egKey]) || {};
     const hasSalary = Object.prototype.hasOwnProperty.call(egObj, "salary");
+    const isAzubi = /^AJ/.test(egKey);
     if (hasSalary){ els.stufeWrap.classList.add("hidden"); els.stufe.innerHTML = ""; }
     else {
       els.stufeWrap.classList.remove("hidden");
       const stufen = Object.keys(egObj || {}).sort();
       els.stufe.innerHTML = stufen.map(s=>`<option value="${s}">${s}</option>`).join("");
+    }
+    // Leistungszulage bei Ausbildungsvergütung deaktivieren
+    if (isAzubi){
+      els.leistung.value = els.leistungRange.value = 0;
+      els.leistung.disabled = true;
+      els.leistungRange.disabled = true;
+      els.leistungBadge.textContent = fmtPct(0);
+    } else {
+      els.leistung.disabled = false;
+      els.leistungRange.disabled = false;
     }
   }
 

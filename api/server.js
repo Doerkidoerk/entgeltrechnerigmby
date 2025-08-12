@@ -102,7 +102,8 @@ function calculate(input) {
   if (!Number.isFinite(grund35)) throw new Error(`Grundwert fehlt für ${eg}${hatSalary ? "" : " / " + _stufe}`);
 
   const grund = grund35 * (irwazHours / 35);
-  const bonus = grund * (leistungsPct / 100);
+  const isAzubi = /^AJ/.test(eg);
+  const bonus = isAzubi ? 0 : grund * (leistungsPct / 100);
 
   // p13 nach Betriebszugehörigkeit
   let p13 = 0;
@@ -160,7 +161,7 @@ function calculate(input) {
 /** Schemas */
 const CalcSchema = z.object({
   tariffDate: z.string(),                 // Schlüsselname = Dateiname ohne .json (z. B. "current")
-  eg: z.string().regex(/^EG\d{2}$/),
+  eg: z.string().regex(/^(EG\d{2}|AJ[1-4])$/),
   stufe: z.string().optional(),           // nur benötigt, wenn EG gestuft ist
   irwazHours: z.number().min(0).max(48),
   leistungsPct: z.number().min(0).max(28),
