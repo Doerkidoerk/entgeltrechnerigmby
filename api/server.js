@@ -64,7 +64,7 @@ loadAllTables().catch(console.error);
 try {
   fs.watch(DATA_DIR, { persistent: true }, (event, filename) => {
     if (!filename || !filename.endsWith(".json")) return;
-    // Debounce: kleinen Timeout, falls Editor zweimal schreibt
+    // Debounce: kurzen Timeout, falls Editor zweimal schreibt
     clearTimeout(fs.watch._t);
     fs.watch._t = setTimeout(() => loadAllTables().catch(console.error), 150);
   });
