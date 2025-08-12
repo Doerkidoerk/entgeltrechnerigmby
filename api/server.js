@@ -61,15 +61,17 @@ async function loadAllTables() {
 
 // Initial laden & bei Änderungen auto-reloaden
 loadAllTables().catch(console.error);
-try {
-  fs.watch(DATA_DIR, { persistent: true }, (event, filename) => {
-    if (!filename || !filename.endsWith(".json")) return;
-    // Debounce: kleinen Timeout, falls Editor zweimal schreibt
-    clearTimeout(fs.watch._t);
-    fs.watch._t = setTimeout(() => loadAllTables().catch(console.error), 150);
-  });
-} catch (e) {
-  console.warn("[tables] fs.watch nicht verfügbar:", e.message);
+if (require.main === module) {
+  try {
+    fs.watch(DATA_DIR, { persistent: true }, (event, filename) => {
+      if (!filename || !filename.endsWith(".json")) return;
+      // Debounce: kleinen Timeout, falls Editor zweimal schreibt
+      clearTimeout(fs.watch._t);
+      fs.watch._t = setTimeout(() => loadAllTables().catch(console.error), 150);
+    });
+  } catch (e) {
+    console.warn("[tables] fs.watch nicht verfügbar:", e.message);
+  }
 }
 
 /** Hilfsfunktionen */
@@ -217,7 +219,10 @@ app.post("/api/calc", (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+if (require.main === module) {
+  app.listen(PORT, "127.0.0.1", () => {
+    console.log(`API listening on http://127.0.0.1:${PORT}`);
+  });
+}
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`API listening on http://127.0.0.1:${PORT}`);
-});
+module.exports = app;
