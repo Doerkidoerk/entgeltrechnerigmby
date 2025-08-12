@@ -86,7 +86,7 @@ function getTable(key) {
 function calculate(input) {
   const {
     tariffDate, eg, stufe, irwazHours, leistungsPct,
-    urlaubsanspruchTage, urlaubstage, betriebsMonate, tZugBPeriod
+    urlaubstage, betriebsMonate, tZugBPeriod
   } = input;
 
   const tbl = getTable(tariffDate);
@@ -124,9 +124,9 @@ function calculate(input) {
   const pTZUGB = (tZugBPeriod === "from2026") ? 26.5 : 18.5;
   const tZugB = baseTbl.EG05.B * (pTZUGB / 100);
 
-  const uansp = urlaubsanspruchTage;
   const utage = urlaubstage;
-  const utag = (uansp && utage) ? (((grund + bonus) / 65.25) * 1.5 * (30 / uansp)) : 0;
+  const uansp = urlaubstage;
+  const utag = utage ? (((grund + bonus) / 65.25) * 1.5 * (30 / uansp)) : 0;
   const uges = utag * utage;
 
   const gesMon = grund + bonus;
@@ -164,8 +164,7 @@ const CalcSchema = z.object({
   stufe: z.string().optional(),           // nur benötigt, wenn EG gestuft ist
   irwazHours: z.number().min(0).max(48),
   leistungsPct: z.number().min(0).max(28),
-  urlaubsanspruchTage: z.number().int().min(20).max(40),
-  urlaubstage: z.number().int().min(0).max(30),
+  urlaubstage: z.number().int().min(0).max(36),
   betriebsMonate: z.number().int().min(0).max(480),
   tZugBPeriod: z.enum(["until2025","from2026"])
 });

@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tariffDate: $("tariffDate"), eg: $("egSelect"), stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
     irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
     leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
-    uAnspr: $("urlaubsanspruchTage"), uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
+    uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
     betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
     status: $("status"), tablesInfo: $("tablesInfo"),
     irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Recalc on input (debounced)
     const recalc = debounce(calculate, 120);
     [els.tariffDate, els.eg, els.stufe, els.irwaz, els.irwazRange, els.leistung, els.leistungRange,
-     els.uAnspr, els.uTage, els.uTageRange, els.betriebs, els.period]
+     els.uTage, els.uTageRange, els.betriebs, els.period]
      .forEach(el => el && el.addEventListener("input", recalc));
 
     els.tariffDate.addEventListener("change", async () => {
@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = {
       tariffDate: els.tariffDate.value, eg: els.eg.value, stufe: els.stufe.value || undefined,
       irwazHours: Number(els.irwaz.value), leistungsPct: Number(els.leistung.value),
-      urlaubsanspruchTage: Number(els.uAnspr.value), urlaubstage: Number(els.uTage.value),
+      urlaubstage: Number(els.uTage.value),
       betriebsMonate: Number(els.betriebs.value), tZugBPeriod: els.period.value
     };
     setStatus("Berechne…","muted");
@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return {
       tariffDate: els.tariffDate.value, eg: els.eg.value, stufe: els.stufe.value || undefined,
       irwazHours: Number(els.irwaz.value), leistungsPct: Number(els.leistung.value),
-      urlaubsanspruchTage: Number(els.uAnspr.value), urlaubstage: Number(els.uTage.value),
+      urlaubstage: Number(els.uTage.value),
       betriebsMonate: Number(els.betriebs.value), tZugBPeriod: els.period.value
     };
   }
@@ -223,8 +223,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function resetForm(){
     els.irwaz.value = els.irwazRange.value = 35;
     els.leistung.value = els.leistungRange.value = 0;
-    els.uAnspr.value = "30";
-    els.uTage.value = els.uTageRange.value = 0;
+    els.uTage.value = els.uTageRange.value = 30;
+    els.urlaubBadge.textContent = `${Number(els.uTage.value)} Tage`;
     els.betriebs.value = "0";
     els.period.value = "until2025";
     calculate(); toast("Formular zurückgesetzt");
