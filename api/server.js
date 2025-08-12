@@ -114,7 +114,7 @@ function calculate(input) {
   const tGeld = (grund + bonus) * 0.184;
   const tZugA = (grund + bonus) * 0.275;
 
-  // T-ZUG B Basis: EG05.B aus (from2026 ? "april2026" : tariffDate)
+  // T-ZUG B Basis: EG05.B aus (tZugBPeriod === "from2026" ? "april2026" : tariffDate)
   const tzugKey = (tZugBPeriod === "from2026") ? "april2026" : tariffDate;
   const baseTbl = getTable(tzugKey);
   if (!baseTbl || !baseTbl.EG05 || !Number.isFinite(baseTbl.EG05?.B)) {
