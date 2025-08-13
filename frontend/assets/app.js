@@ -182,6 +182,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       els.leistung.disabled = false;
       els.leistungRange.disabled = false;
+      els.leistung.value = els.leistungRange.value = 14;
+      els.leistungBadge.textContent = fmtPct(14);
     }
   }
 
@@ -195,6 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
       els.betriebs.disabled = true;
     } else {
       els.betriebs.disabled = false;
+      els.betriebs.value = "36";
     }
   }
 
@@ -396,7 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
     els.leistungBadge.textContent = fmtPct(14);
     els.uTage.value = els.uTageRange.value = 30;
     els.urlaubBadge.textContent = `${Number(els.uTage.value)} Tage`;
-    els.betriebs.value = "0";
+    els.betriebs.value = "36";
     els.period.value = "until2025";
     els.ausbildung.value = "nein";
     els.atCompare.value = "nein";
