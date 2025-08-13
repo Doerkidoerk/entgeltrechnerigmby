@@ -1,3 +1,5 @@
+const APP_VERSION = "1.5";
+
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
@@ -17,8 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
     cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
     atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
     atResult: $("atCompareResult"),
-    themeToggle: $("themeToggle"), toast: $("toast")
+    themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
   };
+
+  els.version.textContent = APP_VERSION;
 
   const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
   const fmtPct = n => Number(n).toFixed(2) + " %";

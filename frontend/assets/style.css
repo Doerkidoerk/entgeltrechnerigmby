@@ -42,6 +42,7 @@ body{
 @media (max-width: 980px){.main-grid{grid-template-columns:1fr}}
 
 .site-header{border-bottom:1px solid var(--line); background:linear-gradient(135deg, rgba(16,24,62,.65), rgba(12,31,42,0))}
+.site-footer{border-top:1px solid var(--line)}
 .header-bar{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .header-actions{display:flex;align-items:center;gap:10px}
 @media (max-width:560px){
