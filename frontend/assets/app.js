@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fmtHours = n => Number(n).toFixed(1) + " h";
   const atMin = {
     mai2024: { "35": { monat: 8252.82, jahr: 102488.80 }, "40": { monat: 9431.24, jahr: 117077.40 } },
-    april2025: { "35": { monat: 8417.25, jahr: 100490.00 }, "40": { monat: 9619.16, jahr: 119410.20 } },
+    april2025: { "35": { monat: 8417.25, jahr: 104490.00 }, "40": { monat: 9619.16, jahr: 119410.20 } },
     april2026: { "35": { monat: 8678.25, jahr: 107730.00 }, "40": { monat: 9918.00, jahr: 123120.00 } }
   };
   let lastTotals = null;
@@ -289,8 +289,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="muted">Jahr:</span> <strong>${fmtEUR.format(jahr)}</strong>
           </li>
           <li>AT-Mindestentgelt (${basis} h):
-            <span class="muted">Monat:</span> <strong>${fmtEUR.format(min.monat)}</strong>
-            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(min.jahr)}</strong>
+            <span class="muted">${isMon ? "Monat" : "Jahr"}:</span>
+            <strong>${fmtEUR.format(isMon ? min.monat : min.jahr)}</strong>
           </li>
           <li>
             ${minOk
