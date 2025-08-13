@@ -15,12 +15,19 @@ document.addEventListener("DOMContentLoaded", () => {
     compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
     cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
     cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
+    atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
+    atResult: $("atCompareResult"),
     themeToggle: $("themeToggle"), toast: $("toast")
   };
 
   const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
   const fmtPct = n => Number(n).toFixed(2) + " %";
   const fmtHours = n => Number(n).toFixed(1) + " h";
+  const atMin = {
+    mai2024: { "35": { monat: 8252.82, jahr: 102488.80 }, "40": { monat: 9431.24, jahr: 117077.40 } },
+    april2025: { "35": { monat: 8417.25, jahr: 100490.00 }, "40": { monat: 9619.16, jahr: 119410.20 } },
+    april2026: { "35": { monat: 8678.25, jahr: 107730.00 }, "40": { monat: 9918.00, jahr: 123120.00 } }
+  };
   let lastTotals = null;
 
   // Helpers
@@ -102,6 +109,17 @@ document.addEventListener("DOMContentLoaded", () => {
       await loadEGs();
       updateAzubiHint();
       recalc();
+    });
+
+    [els.atAmount, els.atType, els.atHours].forEach(el => el && el.addEventListener("input", renderATComparison));
+    els.atCompare.addEventListener("change", () => {
+      if (els.atCompare.value === "ja") {
+        els.atWrap.classList.remove("hidden");
+      } else {
+        els.atWrap.classList.add("hidden");
+        els.atResult.classList.add("hidden");
+      }
+      renderATComparison();
     });
 
     els.resetBtn.addEventListener("click", resetForm);
@@ -203,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await r.json();
       renderResult(data); maybeCompare(data);
       lastTotals = data.totals;
+      renderATComparison();
       setStatus("OK","ok");
     }catch(e){
       els.result.innerHTML = `<div class="alert">Fehler: ${e.message}</div>`;
@@ -235,6 +254,41 @@ document.addEventListener("DOMContentLoaded", () => {
           </ul>
         </div>
       </div>`;
+  }
+
+  function renderATComparison(){
+    if (els.atCompare.value !== "ja" || !lastTotals){
+      els.atResult.classList.add("hidden");
+      return;
+    }
+    const amount = Number(els.atAmount.value);
+    if (!Number.isFinite(amount) || amount <= 0){
+      els.atResult.classList.add("hidden");
+      return;
+    }
+    const isMon = els.atType.value === "monat";
+    const monat = isMon ? amount : amount / 12;
+    const jahr = isMon ? amount * 12 : amount;
+    const basis = els.atHours.value;
+    const min = atMin[els.tariffDate.value]?.[basis];
+    if (!min){
+      els.atResult.classList.add("hidden");
+      return;
+    }
+    const diff = n => (n>=0?"▲ ":"▼ ")+fmtEUR.format(Math.abs(n));
+    const minOk = monat >= min.monat;
+    const dM = diff(monat - lastTotals.monat);
+    const dJ = diff(jahr - lastTotals.jahr);
+    els.atResult.innerHTML = `
+      <h3>AT-Vergleich</h3>
+      <ul class="list">
+        <li>AT-Angebot (${basis} h): <strong>${fmtEUR.format(monat)}</strong> / ${fmtEUR.format(jahr)}</li>
+        <li>AT-Mindestentgelt: <strong>${fmtEUR.format(min.monat)}</strong> / ${fmtEUR.format(min.jahr)}</li>
+        <li>${minOk ? "Angebot ≥ Mindestentgelt" : "<span class='alert'>Angebot unter Mindestentgelt</span>"}</li>
+        <li>Tarif: <strong>${fmtEUR.format(lastTotals.monat)}</strong> / ${fmtEUR.format(lastTotals.jahr)}</li>
+        <li>Δ zum Tarif: <strong>${dM}</strong> / <strong>${dJ}</strong></li>
+      </ul>`;
+    els.atResult.classList.remove("hidden");
   }
 
   // Snapshot
@@ -287,6 +341,12 @@ document.addEventListener("DOMContentLoaded", () => {
     els.betriebs.value = "0";
     els.period.value = "until2025";
     els.ausbildung.value = "nein";
+    els.atCompare.value = "nein";
+    els.atWrap.classList.add("hidden");
+    els.atAmount.value = "";
+    els.atType.value = "monat";
+    els.atHours.value = "35";
+    els.atResult.classList.add("hidden");
     await loadEGs();
     updateAzubiHint();
     calculate();

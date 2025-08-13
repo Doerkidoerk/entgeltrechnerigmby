@@ -117,6 +117,38 @@
         </div>
       </div>
 
+      <div class="field">
+        <label for="atCompare">AT-Vergleich</label>
+        <select id="atCompare">
+          <option value="nein" selected>Nein</option>
+          <option value="ja">Ja</option>
+        </select>
+      </div>
+
+      <div id="atWrap" class="hidden">
+        <div class="field">
+          <label for="atAmount">AT-Gehalt</label>
+          <input id="atAmount" type="number" min="0" step="100" />
+        </div>
+        <div class="field two">
+          <div>
+            <label for="atType">Angabe als</label>
+            <select id="atType">
+              <option value="monat">Monatlich</option>
+              <option value="jahr">Jährlich</option>
+            </select>
+          </div>
+          <div>
+            <label for="atHours">Stundenbasis</label>
+            <select id="atHours">
+              <option value="35">35 h/Woche</option>
+              <option value="40">40 h/Woche</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint small">Hinweis: AT-Angestellte haben keinen Anspruch auf tarifliche Leistungen (z. B. T-ZUG-Tage, besonderer Kündigungsschutz).</p>
+      </div>
+
       <div class="actions">
         <button id="resetBtn" class="btn ghost" type="button">Zurücksetzen</button>
         <div class="spacer"></div>
@@ -154,6 +186,7 @@
           </div>
         </div>
       </div>
+      <div id="atCompareResult" class="hidden"></div>
     </section>
   </main>
 
