@@ -165,7 +165,7 @@ const CalcSchema = z.object({
   tariffDate: z.string(),                 // Schlüsselname = Dateiname ohne .json (z. B. "current")
   eg: z.string().regex(/^(EG\d{2}|AJ[1-4])$/),
   stufe: z.string().optional(),           // nur benötigt, wenn EG gestuft ist
-  irwazHours: z.number().min(0).max(48),
+  irwazHours: z.number().min(0).max(40),
   leistungsPct: z.number().min(0).max(28),
   urlaubstage: z.number().int().min(0).max(36),
   betriebsMonate: z.number().int().min(0).max(480),
