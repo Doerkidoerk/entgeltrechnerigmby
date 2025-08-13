@@ -1,8 +1,8 @@
 # Entgeltrechner
 
-Eine kleine Webanwendung zur Berechnung des Entgelts nach IG‑Metall‑Tariftabellen. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die Bestandteile übersichtlich dar.
+Eine kleine Webanwendung zur Berechnung des Entgelts nach der IG Metall Tariftabelle für die bayerische Metall- und Elektroindustrie. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die verschiedenen  Entgeltsbestandteile übersichtlich dar.
 
-Monorepo mit zwei Komponenten:
+WebApp mit zwei Komponenten:
 
 - **API** (`api/`): Node.js/Express-Server für die Entgeltberechnung.
 - **Frontend** (`frontend/`): statische HTML/CSS/JS-Anwendung, die die API nutzt.
