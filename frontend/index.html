@@ -44,11 +44,20 @@
         <label for="tariffDate">Tarifdatum</label>
         <select id="tariffDate"></select>
         <p class="hint small" id="tablesInfo">—</p>
+        <p class="hint small hidden" id="azubiHint">Hinweis: Die Auszubildendenvergütung 2025 gilt ab 01. Januar 2025.</p>
+      </div>
+
+      <div class="field">
+        <label for="ausbildung">In Ausbildung?</label>
+        <select id="ausbildung">
+          <option value="nein" selected>Nein</option>
+          <option value="ja">Ja</option>
+        </select>
       </div>
 
       <div class="field two">
-        <div>
-          <label for="egSelect">Entgeltgruppe</label>
+        <div id="egWrap">
+          <label for="egSelect" id="egLabel">Entgeltgruppe</label>
           <select id="egSelect"></select>
         </div>
         <div id="stufeWrap" class="hidden">
