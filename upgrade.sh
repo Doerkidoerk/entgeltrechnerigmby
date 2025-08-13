@@ -7,16 +7,12 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Funktion für Pfad-Eingabe mit Tab-Vervollständigung
+# Pfad-Eingabe mit Tab-Unterstützung
 read_path() {
     local PROMPT="$1"
-    local REPLY_VAR
-    # Aktiviert Dateipfad-Komplettierung
-    bind 'set show-all-if-ambiguous on'
-    bind 'TAB:menu-complete'
-    bind 'set completion-ignore-case on'
-    read -e -p "$PROMPT" -i "" REPLY_VAR
-    echo "$REPLY_VAR"
+    local VAR
+    read -e -p "$PROMPT" VAR   # -e = Readline aktivieren
+    echo "$VAR"
 }
 
 FRONTEND_DIR=$(read_path "Wo sollen die Frontend-Dateien installiert werden? ")
