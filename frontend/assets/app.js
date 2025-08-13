@@ -97,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateStufen(data.table);
       updateBetriebsFromAJ();
       updateAzubiHint();
+      updateAusbildungSettings();
       recalc();
     });
     els.eg.addEventListener("change", async () => {
@@ -108,6 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     els.ausbildung.addEventListener("change", async () => {
       await loadEGs();
       updateAzubiHint();
+      updateAusbildungSettings();
       recalc();
     });
 
@@ -134,6 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!els.tariffDate.value) return;
     const data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
     const table = data.table || {};
+    const prevEg = els.eg.value;
+    const prevStufe = els.stufe.value;
     let egs = Object.keys(table).sort();
     if (els.ausbildung.value === "ja") {
       egs = egs.filter(k=>/^AJ/.test(k));
@@ -143,8 +147,19 @@ document.addEventListener("DOMContentLoaded", () => {
       els.egLabel.textContent = "Entgeltgruppe";
     }
     els.eg.innerHTML = egs.map(k=>`<option value="${k}">${k}</option>`).join("");
+    let egVal = prevEg && egs.includes(prevEg) ? prevEg : (egs.includes("EG05") ? "EG05" : egs[0]);
+    els.eg.value = egVal;
     updateStufen(table);
+    if (els.stufe.options.length){
+      const options = Array.from(els.stufe.options).map(o=>o.value);
+      if (prevStufe && options.includes(prevStufe)){
+        els.stufe.value = prevStufe;
+      } else if (options.includes("B")){
+        els.stufe.value = "B";
+      }
+    }
     updateBetriebsFromAJ();
+    updateAusbildungSettings();
   }
 
   function updateStufen(table){
@@ -191,18 +206,38 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function updateAusbildungSettings(){
+    const isAzubi = els.ausbildung.value === "ja";
+    const max = isAzubi ? 35 : 40;
+    els.irwaz.max = els.irwazRange.max = max;
+    if (Number(els.irwaz.value) > max){
+      els.irwaz.value = els.irwazRange.value = max;
+      els.irwazBadge.textContent = fmtHours(max);
+    }
+    if (isAzubi){
+      els.atCompare.value = "nein";
+      els.atCompare.disabled = true;
+      els.atWrap.classList.add("hidden");
+      els.atResult.classList.add("hidden");
+    } else {
+      els.atCompare.disabled = false;
+    }
+  }
+
   function link(numberEl, rangeEl, onChange){
     if (!numberEl || !rangeEl) return;
     const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
-    const sync = (from,to,min,max) => () => {
+    const sync = (from,to) => () => {
       let v = Number(from.value);
       if (!Number.isFinite(v)) v = 0;
-      v = clamp(v, Number(min), Number(max));
+      const min = Number(from.min);
+      const max = Number(from.max);
+      v = clamp(v, min, max);
       from.value = v; to.value = v;
       onChange && onChange(v);
     };
-    numberEl.addEventListener("input", sync(numberEl, rangeEl, numberEl.min, numberEl.max));
-    rangeEl.addEventListener("input", sync(rangeEl, numberEl, rangeEl.min, rangeEl.max));
+    numberEl.addEventListener("input", sync(numberEl, rangeEl));
+    rangeEl.addEventListener("input", sync(rangeEl, numberEl));
     // Initial Badge
     onChange && onChange(numberEl.value);
   }
@@ -308,6 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="${dJahr>=0?"pos":"neg"}">${diffIcon(dJahr)} ${diffVal(dJahr)}</span>
           </li>
         </ul>
+        <p class="hint small">Hinweis: AT-Angestellte haben keinen Anspruch auf tarifliche Leistungen (z. B. T-ZUG-Tage, besonderer Kündigungsschutz).</p>
       </div>`;
     els.atResult.classList.remove("hidden");
   }
@@ -356,7 +392,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function resetForm(){
     els.irwaz.value = els.irwazRange.value = 35;
-    els.leistung.value = els.leistungRange.value = 0;
+    els.leistung.value = els.leistungRange.value = 14;
+    els.leistungBadge.textContent = fmtPct(14);
     els.uTage.value = els.uTageRange.value = 30;
     els.urlaubBadge.textContent = `${Number(els.uTage.value)} Tage`;
     els.betriebs.value = "0";
