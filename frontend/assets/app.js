@@ -1,3 +1,5 @@
+const APP_VERSION = "1.5";
+
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
@@ -15,12 +17,21 @@ document.addEventListener("DOMContentLoaded", () => {
     compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
     cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
     cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
-    themeToggle: $("themeToggle"), toast: $("toast")
+    atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
+    atResult: $("atCompareResult"),
+    themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
   };
+
+  els.version.textContent = APP_VERSION;
 
   const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
   const fmtPct = n => Number(n).toFixed(2) + " %";
   const fmtHours = n => Number(n).toFixed(1) + " h";
+  const atMin = {
+    mai2024: { "35": { monat: 8252.82, jahr: 102488.80 }, "40": { monat: 9431.24, jahr: 117077.40 } },
+    april2025: { "35": { monat: 8417.25, jahr: 104490.00 }, "40": { monat: 9619.16, jahr: 119410.20 } },
+    april2026: { "35": { monat: 8678.25, jahr: 107730.00 }, "40": { monat: 9918.00, jahr: 123120.00 } }
+  };
   let lastTotals = null;
 
   // Helpers
@@ -90,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateStufen(data.table);
       updateBetriebsFromAJ();
       updateAzubiHint();
+      updateAusbildungSettings();
       recalc();
     });
     els.eg.addEventListener("change", async () => {
@@ -101,7 +113,19 @@ document.addEventListener("DOMContentLoaded", () => {
     els.ausbildung.addEventListener("change", async () => {
       await loadEGs();
       updateAzubiHint();
+      updateAusbildungSettings();
       recalc();
+    });
+
+    [els.atAmount, els.atType, els.atHours].forEach(el => el && el.addEventListener("input", renderATComparison));
+    els.atCompare.addEventListener("change", () => {
+      if (els.atCompare.value === "ja") {
+        els.atWrap.classList.remove("hidden");
+      } else {
+        els.atWrap.classList.add("hidden");
+        els.atResult.classList.add("hidden");
+      }
+      renderATComparison();
     });
 
     els.resetBtn.addEventListener("click", resetForm);
@@ -116,6 +140,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!els.tariffDate.value) return;
     const data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
     const table = data.table || {};
+    const prevEg = els.eg.value;
+    const prevStufe = els.stufe.value;
     let egs = Object.keys(table).sort();
     if (els.ausbildung.value === "ja") {
       egs = egs.filter(k=>/^AJ/.test(k));
@@ -125,8 +151,19 @@ document.addEventListener("DOMContentLoaded", () => {
       els.egLabel.textContent = "Entgeltgruppe";
     }
     els.eg.innerHTML = egs.map(k=>`<option value="${k}">${k}</option>`).join("");
+    let egVal = prevEg && egs.includes(prevEg) ? prevEg : (egs.includes("EG05") ? "EG05" : egs[0]);
+    els.eg.value = egVal;
     updateStufen(table);
+    if (els.stufe.options.length){
+      const options = Array.from(els.stufe.options).map(o=>o.value);
+      if (prevStufe && options.includes(prevStufe)){
+        els.stufe.value = prevStufe;
+      } else if (options.includes("B")){
+        els.stufe.value = "B";
+      }
+    }
     updateBetriebsFromAJ();
+    updateAusbildungSettings();
   }
 
   function updateStufen(table){
@@ -149,6 +186,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       els.leistung.disabled = false;
       els.leistungRange.disabled = false;
+      els.leistung.value = els.leistungRange.value = 14;
+      els.leistungBadge.textContent = fmtPct(14);
     }
   }
 
@@ -162,6 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
       els.betriebs.disabled = true;
     } else {
       els.betriebs.disabled = false;
+      els.betriebs.value = "36";
     }
   }
 
@@ -173,18 +213,38 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function updateAusbildungSettings(){
+    const isAzubi = els.ausbildung.value === "ja";
+    const max = isAzubi ? 35 : 40;
+    els.irwaz.max = els.irwazRange.max = max;
+    if (Number(els.irwaz.value) > max){
+      els.irwaz.value = els.irwazRange.value = max;
+      els.irwazBadge.textContent = fmtHours(max);
+    }
+    if (isAzubi){
+      els.atCompare.value = "nein";
+      els.atCompare.disabled = true;
+      els.atWrap.classList.add("hidden");
+      els.atResult.classList.add("hidden");
+    } else {
+      els.atCompare.disabled = false;
+    }
+  }
+
   function link(numberEl, rangeEl, onChange){
     if (!numberEl || !rangeEl) return;
     const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
-    const sync = (from,to,min,max) => () => {
+    const sync = (from,to) => () => {
       let v = Number(from.value);
       if (!Number.isFinite(v)) v = 0;
-      v = clamp(v, Number(min), Number(max));
+      const min = Number(from.min);
+      const max = Number(from.max);
+      v = clamp(v, min, max);
       from.value = v; to.value = v;
       onChange && onChange(v);
     };
-    numberEl.addEventListener("input", sync(numberEl, rangeEl, numberEl.min, numberEl.max));
-    rangeEl.addEventListener("input", sync(rangeEl, numberEl, rangeEl.min, rangeEl.max));
+    numberEl.addEventListener("input", sync(numberEl, rangeEl));
+    rangeEl.addEventListener("input", sync(rangeEl, numberEl));
     // Initial Badge
     onChange && onChange(numberEl.value);
   }
@@ -203,6 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await r.json();
       renderResult(data); maybeCompare(data);
       lastTotals = data.totals;
+      renderATComparison();
       setStatus("OK","ok");
     }catch(e){
       els.result.innerHTML = `<div class="alert">Fehler: ${e.message}</div>`;
@@ -235,6 +296,63 @@ document.addEventListener("DOMContentLoaded", () => {
           </ul>
         </div>
       </div>`;
+  }
+
+  function renderATComparison(){
+    if (els.atCompare.value !== "ja" || !lastTotals){
+      els.atResult.classList.add("hidden");
+      return;
+    }
+    const amount = Number(els.atAmount.value);
+    if (!Number.isFinite(amount) || amount <= 0){
+      els.atResult.classList.add("hidden");
+      return;
+    }
+    const isMon = els.atType.value === "monat";
+    const monat = isMon ? amount : amount / 12;
+    const jahr = isMon ? amount * 12 : amount;
+    const basis = els.atHours.value;
+    const min = atMin[els.tariffDate.value]?.[basis];
+    if (!min){
+      els.atResult.classList.add("hidden");
+      return;
+    }
+    const diffIcon = n => `<span class="icon">${n >= 0 ? "▲" : "▼"}</span>`;
+    const diffVal = n => fmtEUR.format(Math.abs(n));
+    const minOk = isMon ? monat >= min.monat : jahr >= min.jahr;
+    const dMonat = monat - lastTotals.monat;
+    const dJahr = jahr - lastTotals.jahr;
+    els.atResult.innerHTML = `
+      <div class="tile">
+        <h3>AT-Vergleich</h3>
+        <ul class="list">
+          <li>AT-Angebot (${basis} h):
+            <span class="muted">Monat:</span> <strong>${fmtEUR.format(monat)}</strong>
+            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(jahr)}</strong>
+          </li>
+          <li>AT-Mindestentgelt (${basis} h):
+            <span class="muted">${isMon ? "Monat" : "Jahr"}:</span>
+            <strong>${fmtEUR.format(isMon ? min.monat : min.jahr)}</strong>
+          </li>
+          <li>
+            ${minOk
+              ? `<span class="icon pos">▲</span> Angebot über Mindestentgelt (${isMon ? "Monat" : "Jahr"})`
+              : `<span class="icon neg">▼</span> Angebot unter Mindestentgelt (${isMon ? "Monat" : "Jahr"})`}
+          </li>
+          <li>Tarif:
+            <span class="muted">Monat:</span> <strong>${fmtEUR.format(lastTotals.monat)}</strong>
+            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(lastTotals.jahr)}</strong>
+          </li>
+          <li>Δ zum Tarif:
+            <span class="muted">Monat:</span>
+            <span class="${dMonat>=0?"pos":"neg"}">${diffIcon(dMonat)} ${diffVal(dMonat)}</span>
+            <span class="muted">Jahr:</span>
+            <span class="${dJahr>=0?"pos":"neg"}">${diffIcon(dJahr)} ${diffVal(dJahr)}</span>
+          </li>
+        </ul>
+        <p class="hint small">Hinweis: AT-Angestellte haben keinen Anspruch auf tarifliche Leistungen (z. B. T-ZUG-Tage, besonderer Kündigungsschutz).</p>
+      </div>`;
+    els.atResult.classList.remove("hidden");
   }
 
   // Snapshot
@@ -281,12 +399,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function resetForm(){
     els.irwaz.value = els.irwazRange.value = 35;
-    els.leistung.value = els.leistungRange.value = 0;
+    els.leistung.value = els.leistungRange.value = 14;
+    els.leistungBadge.textContent = fmtPct(14);
     els.uTage.value = els.uTageRange.value = 30;
     els.urlaubBadge.textContent = `${Number(els.uTage.value)} Tage`;
-    els.betriebs.value = "0";
+    els.betriebs.value = "36";
     els.period.value = "until2025";
     els.ausbildung.value = "nein";
+    els.atCompare.value = "nein";
+    els.atWrap.classList.add("hidden");
+    els.atAmount.value = "";
+    els.atType.value = "monat";
+    els.atHours.value = "35";
+    els.atResult.classList.add("hidden");
     await loadEGs();
     updateAzubiHint();
     calculate();

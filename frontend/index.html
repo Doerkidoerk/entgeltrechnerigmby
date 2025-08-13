@@ -80,11 +80,11 @@
       <div class="field">
         <div class="label-row">
           <label for="leistungsPct">Leistung</label>
-          <span class="badge" id="leistungBadge">0,00 %</span>
+          <span class="badge" id="leistungBadge">14,00 %</span>
         </div>
         <div class="combo">
-          <input id="leistungsPct" type="number" min="0" max="28" step="0.28" value="0" />
-          <input id="leistungsRange" class="range" type="range" min="0" max="28" step="0.28" value="0" />
+          <input id="leistungsPct" type="number" min="0" max="28" step="0.28" value="14" />
+          <input id="leistungsRange" class="range" type="range" min="0" max="28" step="0.28" value="14" />
         </div>
       </div>
 
@@ -101,19 +101,50 @@
 
       <div class="field two">
         <div>
-          <label for="betriebsMonate">Betriebszugehörigkeit (Monate)</label>
-          <select id="betriebsMonate">
-            <option value="0">0</option><option value="6">6</option>
-            <option value="12">12</option><option value="24">24</option>
-            <option value="36">36</option>
-          </select>
-        </div>
+            <label for="betriebsMonate">Betriebszugehörigkeit (Monate)</label>
+            <select id="betriebsMonate">
+              <option value="0">0</option><option value="6">6</option>
+              <option value="12">12</option><option value="24">24</option>
+              <option value="36" selected>36</option>
+            </select>
+          </div>
         <div>
           <label for="tZugBPeriod">T-ZUG B Zeitraum</label>
           <select id="tZugBPeriod">
             <option value="until2025">Bis 31.12.2025 (18,5 %)</option>
             <option value="from2026">Ab 01.01.2026 (26,5 %)</option>
           </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="atCompare">AT-Vergleich</label>
+        <select id="atCompare">
+          <option value="nein" selected>Nein</option>
+          <option value="ja">Ja</option>
+        </select>
+      </div>
+
+      <div id="atWrap" class="hidden">
+        <div class="field">
+          <label for="atAmount">AT-Gehalt</label>
+          <input id="atAmount" type="number" min="0" step="100" />
+        </div>
+        <div class="field two">
+          <div>
+            <label for="atType">Angabe als</label>
+            <select id="atType">
+              <option value="monat">Monatlich</option>
+              <option value="jahr">Jährlich</option>
+            </select>
+          </div>
+          <div>
+            <label for="atHours">Stundenbasis</label>
+            <select id="atHours">
+              <option value="35">35 h/Woche</option>
+              <option value="40">40 h/Woche</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -154,8 +185,12 @@
           </div>
         </div>
       </div>
+      <div id="atCompareResult" class="hidden"></div>
     </section>
   </main>
+  <footer class="site-footer">
+    <div class="container small muted">Version <span id="appVersion"></span></div>
+  </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
