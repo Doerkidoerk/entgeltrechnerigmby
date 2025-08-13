@@ -25,8 +25,8 @@ let tablesByKey = Object.create(null);
 let tablesMeta = Object.create(null); // { key: { mtimeMs, bytes } }
 
 async function loadAllTables() {
-  const map = Object.create(null);
-  const meta = Object.create(null);
+    const map = Object.create(null);
+    const meta = Object.create(null);
 
   await fsp.mkdir(DATA_DIR, { recursive: true });
   const files = (await fsp.readdir(DATA_DIR)).filter(f => f.endsWith(".json"));
@@ -35,17 +35,20 @@ async function loadAllTables() {
     const key = path.basename(file, ".json"); // z.B. "current"
     const full = path.join(DATA_DIR, file);
     try {
-      const stat = await fsp.stat(full);
-      const buf = await fsp.readFile(full, "utf8");
-      const json = JSON.parse(buf);
+        const stat = await fsp.stat(full);
+        const buf = await fsp.readFile(full, "utf8");
+        const json = JSON.parse(buf);
 
-      // einfache Strukturprüfung (EG-Schlüssel erwartet)
-      // JSON.parse kann `null` zurückgeben, was ebenfalls kein gültiges Tabellen-Objekt ist
-      if (json === null || typeof json !== "object" || Array.isArray(json)) {
-        throw new Error(`Ungültiges JSON-Format in ${file}`);
-      }
-      map[key] = json;
-      meta[key] = { mtimeMs: stat.mtimeMs, bytes: stat.size };
+        // einfache Strukturprüfung
+        if (json === null || typeof json !== "object" || Array.isArray(json)) {
+          throw new Error(`Ungültiges JSON-Format in ${file}`);
+        }
+
+        const table = json.table && typeof json.table === "object" ? json.table : json;
+        const atMin = json.atMin && typeof json.atMin === "object" ? json.atMin : {};
+
+        map[key] = { table, atMin };
+        meta[key] = { mtimeMs: stat.mtimeMs, bytes: stat.size };
     } catch (e) {
       console.error(`[tables] Fehler beim Laden von ${file}:`, e.message);
     }
@@ -78,11 +81,14 @@ if (process.env.NODE_ENV !== "test") {
 /** Hilfsfunktionen */
 const euro = n => Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 
-function getTable(key) {
-  // Fallback auf "current", wenn gewünscht
+function getEntry(key) {
   if (tablesByKey[key]) return tablesByKey[key];
   if (tablesByKey["current"]) return tablesByKey["current"];
   return null;
+}
+
+function getTable(key) {
+  return getEntry(key)?.table || null;
 }
 
 function calculate(input) {
@@ -195,10 +201,10 @@ app.get("/api/tables", (_req, res) => {
 
 app.get("/api/tables/:key", (req, res) => {
   const key = req.params.key;
-  const tbl = getTable(key);
-  if (!tbl) return res.status(404).json({ error: `Tabelle '${key}' nicht gefunden` });
+  const entry = getEntry(key);
+  if (!entry) return res.status(404).json({ error: `Tabelle '${key}' nicht gefunden` });
   res.set("Cache-Control", "public, max-age=86400, immutable");
-  res.json({ key, table: tbl });
+  res.json({ key, table: entry.table, atMin: entry.atMin });
 });
 
 app.post("/api/calc", (req, res) => {
