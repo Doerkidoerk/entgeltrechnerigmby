@@ -276,15 +276,16 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const diff = n => (n>=0?"▲ ":"▼ ")+fmtEUR.format(Math.abs(n));
-    const minOk = monat >= min.monat;
+    const minVal = isMon ? min.monat : min.jahr;
+    const minOk = isMon ? monat >= min.monat : jahr >= min.jahr;
     const dM = diff(monat - lastTotals.monat);
     const dJ = diff(jahr - lastTotals.jahr);
     els.atResult.innerHTML = `
       <h3>AT-Vergleich</h3>
       <ul class="list">
         <li>AT-Angebot (${basis} h): <strong>${fmtEUR.format(monat)}</strong> / ${fmtEUR.format(jahr)}</li>
-        <li>AT-Mindestentgelt: <strong>${fmtEUR.format(min.monat)}</strong> / ${fmtEUR.format(min.jahr)}</li>
-        <li>${minOk ? "Angebot ≥ Mindestentgelt" : "<span class='alert'>Angebot unter Mindestentgelt</span>"}</li>
+        <li>AT-Mindestentgelt (${isMon ? "Monat" : "Jahr"}): <strong>${fmtEUR.format(minVal)}</strong></li>
+        <li>${minOk ? `Angebot ≥ Mindestentgelt (${isMon ? "Monat" : "Jahr"})` : `<span class='alert'>Angebot unter Mindestentgelt (${isMon ? "Monat" : "Jahr"})</span>`}</li>
         <li>Tarif: <strong>${fmtEUR.format(lastTotals.monat)}</strong> / ${fmtEUR.format(lastTotals.jahr)}</li>
         <li>Δ zum Tarif: <strong>${dM}</strong> / <strong>${dJ}</strong></li>
       </ul>`;
