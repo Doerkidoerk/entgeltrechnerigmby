@@ -277,10 +277,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderResult(d){
     const b = d.breakdown, t = d.totals;
+    const bonusTxt = b.bonus !== undefined ? ` · Bonus: ${fmtEUR.format(b.bonus)}` : "";
+    const kinderTxt = b.kinderzulage ? ` · Zulage: ${fmtEUR.format(b.kinderzulage)}` : "";
     els.result.innerHTML = `
       <div class="subgrid">
         <div class="tile"><h3>Monat</h3><div class="big">${fmtEUR.format(t.monat)}</div>
-          <div class="micro muted">Grund: ${fmtEUR.format(b.grund)} · Bonus: ${fmtEUR.format(b.bonus)}${b.kinderzulage ? ` · Zulage: ${fmtEUR.format(b.kinderzulage)}` : ""}</div></div>
+          <div class="micro muted">Grund: ${fmtEUR.format(b.grund)}${bonusTxt}${kinderTxt}</div></div>
         <div class="tile"><h3>Jahr</h3><div class="big">${fmtEUR.format(t.jahr)}</div>
           <div class="micro muted">Ø Monat: ${fmtEUR.format(t.durchschnittMonat)}</div></div>
         <div class="tile">

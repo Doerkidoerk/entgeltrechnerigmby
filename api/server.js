@@ -136,24 +136,29 @@ function calculate(input) {
   const gesMon = gesMonBasis + kinderZulage;
   const gesJahr = gesMonBasis * 12 + kinderZulage * 12 + mon13 + tGeld + tZugA + tZugB + uges;
 
+  const breakdown = {
+    grund35: euro(grund35),
+    irwazHours,
+    grund: euro(grund),
+    kinderzulage: euro(kinderZulage),
+    p13,
+    mon13: euro(mon13),
+    tGeld: euro(tGeld),
+    tZugA: euro(tZugA),
+    tZugB: euro(tZugB),
+    urlaub: {
+      entgeltProTag: euro(utag),
+      tage: utage,
+      gesamt: euro(uges)
+    }
+  };
+
+  if (!isAzubi) {
+    breakdown.bonus = euro(bonus);
+  }
+
   return {
-    breakdown: {
-      grund35: euro(grund35),
-      irwazHours,
-      grund: euro(grund),
-      bonus: euro(bonus),
-      kinderzulage: euro(kinderZulage),
-      p13,
-      mon13: euro(mon13),
-      tGeld: euro(tGeld),
-      tZugA: euro(tZugA),
-      tZugB: euro(tZugB),
-      urlaub: {
-        entgeltProTag: euro(utag),
-        tage: utage,
-        gesamt: euro(uges)
-      }
-    },
+    breakdown,
     totals: {
       monat: euro(gesMon),
       jahr: euro(gesJahr),
