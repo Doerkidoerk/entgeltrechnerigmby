@@ -2,12 +2,13 @@
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   const els = {
-    tariffDate: $("tariffDate"), eg: $("egSelect"), stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
+    tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), eg: $("egSelect"), egLabel: $("egLabel"),
+    stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
     irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
     leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
     uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
     betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
-    status: $("status"), tablesInfo: $("tablesInfo"),
+    status: $("status"), tablesInfo: $("tablesInfo"), azubiHint: $("azubiHint"),
     irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
     result: $("result"),
     calcBtn: $("calcBtn"), resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
@@ -50,6 +51,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return r.json();
   }
 
+  function formatTariffDate(k){
+    const map = {
+      mai2024: "01. Mai 2024",
+      april2025: "01. April 2025",
+      april2026: "01. April 2026"
+    };
+    return map[k] || k;
+  }
+
   // Init
   (async function init(){
     try { await fetchJSON("/api/health"); setStatus("API OK","ok"); }
@@ -57,10 +67,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const meta = await fetchJSON("/api/tables");
-      els.tablesInfo.textContent = `Tabellen: ${meta.keys.join(", ")||"—"}`;
-      els.tariffDate.innerHTML = meta.keys.map(k=>`<option value="${k}">${k}</option>`).join("");
+      els.tablesInfo.textContent = `Tabellen: ${meta.keys.map(formatTariffDate).join(", ")||"—"}`;
+      els.tariffDate.innerHTML = meta.keys.map(k=>`<option value="${k}">${formatTariffDate(k)}</option>`).join("");
       els.tariffDate.value = meta.keys.includes("current") ? "current" : meta.keys[0] || "";
       await loadEGs();
+      updateAzubiHint();
     } catch(e){ console.error(e); els.tablesInfo.textContent = "Tabellen: —"; }
 
     // Slider <-> Number verknüpfen + Badges
@@ -70,17 +81,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Recalc on input (debounced)
     const recalc = debounce(calculate, 120);
-    [els.tariffDate, els.eg, els.stufe, els.irwaz, els.irwazRange, els.leistung, els.leistungRange,
+    [els.tariffDate, els.ausbildung, els.eg, els.stufe, els.irwaz, els.irwazRange, els.leistung, els.leistungRange,
      els.uTage, els.uTageRange, els.betriebs, els.period]
      .forEach(el => el && el.addEventListener("input", recalc));
 
     els.tariffDate.addEventListener("change", async () => {
       const data = await fetch(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`).then(r=>r.json());
-      updateStufen(data.table); recalc();
+      updateStufen(data.table);
+      updateBetriebsFromAJ();
+      updateAzubiHint();
+      recalc();
     });
     els.eg.addEventListener("change", async () => {
       const data = await fetch(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`).then(r=>r.json());
-      updateStufen(data.table); recalc();
+      updateStufen(data.table);
+      updateBetriebsFromAJ();
+      recalc();
+    });
+    els.ausbildung.addEventListener("change", async () => {
+      await loadEGs();
+      updateAzubiHint();
+      recalc();
     });
 
     els.calcBtn.addEventListener("click", calculate);
@@ -96,9 +117,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!els.tariffDate.value) return;
     const data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
     const table = data.table || {};
-    const egs = Object.keys(table).sort();
+    let egs = Object.keys(table).sort();
+    if (els.ausbildung.value === "ja") {
+      egs = egs.filter(k=>/^AJ/.test(k));
+      els.egLabel.textContent = "Auszubildendenvergütung";
+    } else {
+      egs = egs.filter(k=>!/^AJ/.test(k));
+      els.egLabel.textContent = "Entgeltgruppe";
+    }
     els.eg.innerHTML = egs.map(k=>`<option value="${k}">${k}</option>`).join("");
     updateStufen(table);
+    updateBetriebsFromAJ();
   }
 
   function updateStufen(table){
@@ -121,6 +150,27 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       els.leistung.disabled = false;
       els.leistungRange.disabled = false;
+    }
+  }
+
+  function updateBetriebsFromAJ(){
+    if (els.ausbildung.value === "ja"){
+      const map = { AJ1:0, AJ2:12, AJ3:24, AJ4:36 };
+      const v = map[els.eg.value];
+      if (v !== undefined){
+        els.betriebs.value = String(v);
+      }
+      els.betriebs.disabled = true;
+    } else {
+      els.betriebs.disabled = false;
+    }
+  }
+
+  function updateAzubiHint(){
+    if (els.ausbildung.value === "ja" && els.tariffDate.value === "april2025"){
+      els.azubiHint.classList.remove("hidden");
+    } else {
+      els.azubiHint.classList.add("hidden");
     }
   }
 
@@ -230,13 +280,17 @@ document.addEventListener("DOMContentLoaded", () => {
     els.cmpDeltaMonth.textContent=f(dM); els.cmpDeltaYear.textContent=f(dY); els.cmpDeltaAvg.textContent=f(dA);
   }
 
-  function resetForm(){
+  async function resetForm(){
     els.irwaz.value = els.irwazRange.value = 35;
     els.leistung.value = els.leistungRange.value = 0;
     els.uTage.value = els.uTageRange.value = 30;
     els.urlaubBadge.textContent = `${Number(els.uTage.value)} Tage`;
     els.betriebs.value = "0";
     els.period.value = "until2025";
-    calculate(); toast("Formular zurückgesetzt");
+    els.ausbildung.value = "nein";
+    await loadEGs();
+    updateAzubiHint();
+    calculate();
+    toast("Formular zurückgesetzt");
   }
 });
