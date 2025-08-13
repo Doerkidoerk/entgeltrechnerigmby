@@ -127,10 +127,9 @@ function calculate(input) {
   const pTZUGB = (tZugBPeriod === "from2026") ? 26.5 : 18.5;
   const tZugB = baseTbl.EG05.B * (pTZUGB / 100);
 
-  const utage = urlaubstage;
-  const uansp = urlaubstage;
-  const utag = utage ? (((grund + bonus) / 65.25) * 1.5 * (30 / uansp)) : 0;
-  const uges = utag * utage;
+  const utage = urlaubstage; // Anzahl der Urlaubstage
+  const utag = utage ? (((grund + bonus) / 65.25) * 1.5) : 0; // Entgelt pro Tag
+  const uges = utag * utage; // Urlaubsgeld gesamt
 
   const gesMon = grund + bonus;
   const gesJahr = gesMon * 12 + mon13 + tGeld + tZugA + tZugB + uges;

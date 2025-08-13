@@ -36,4 +36,17 @@ describe('POST /api/calc', () => {
     expect(res.body.totals.monat).toBeCloseTo(3648.75, 2);
     expect(res.body.totals.jahr).toBeCloseTo(50567.59, 2);
   });
+
+  test('urlaubsgeld reflects provided days', async () => {
+    const res30 = await request(app)
+      .post('/api/calc')
+      .send({ ...payload, urlaubstage: 30, tZugBPeriod: 'until2025' });
+    const res20 = await request(app)
+      .post('/api/calc')
+      .send({ ...payload, urlaubstage: 20, tZugBPeriod: 'until2025' });
+
+    expect(res20.status).toBe(200);
+    expect(res20.body.breakdown.urlaub.gesamt)
+      .toBeCloseTo(res30.body.breakdown.urlaub.gesamt * (20 / 30), 2);
+  });
 });
