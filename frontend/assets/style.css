@@ -125,6 +125,11 @@ html[data-theme="light"] .toast{background:rgba(0,0,0,.85)}
 .panel-row:last-child{border-bottom:none}
 .panel.delta .panel-title{color:var(--accent2)}
 
+/* ==== Icons ==== */
+.icon{font-weight:700}
+.pos{color:var(--ok)}
+.neg{color:var(--err)}
+
 /* ==== Misc ==== */
 .noscript{padding:10px;margin:0;background:#ffdede;color:#400;border-bottom:1px solid #c00;text-align:center}
 .hidden{display:none}

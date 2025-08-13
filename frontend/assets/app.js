@@ -275,20 +275,40 @@ document.addEventListener("DOMContentLoaded", () => {
       els.atResult.classList.add("hidden");
       return;
     }
-    const diff = n => (n>=0?"▲ ":"▼ ")+fmtEUR.format(Math.abs(n));
-    const minVal = isMon ? min.monat : min.jahr;
+    const diffIcon = n => `<span class="icon">${n >= 0 ? "▲" : "▼"}</span>`;
+    const diffVal = n => fmtEUR.format(Math.abs(n));
     const minOk = isMon ? monat >= min.monat : jahr >= min.jahr;
-    const dM = diff(monat - lastTotals.monat);
-    const dJ = diff(jahr - lastTotals.jahr);
+    const dMonat = monat - lastTotals.monat;
+    const dJahr = jahr - lastTotals.jahr;
     els.atResult.innerHTML = `
-      <h3>AT-Vergleich</h3>
-      <ul class="list">
-        <li>AT-Angebot (${basis} h): <strong>${fmtEUR.format(monat)}</strong> / ${fmtEUR.format(jahr)}</li>
-        <li>AT-Mindestentgelt (${isMon ? "Monat" : "Jahr"}): <strong>${fmtEUR.format(minVal)}</strong></li>
-        <li>${minOk ? `Angebot ≥ Mindestentgelt (${isMon ? "Monat" : "Jahr"})` : `<span class='alert'>Angebot unter Mindestentgelt (${isMon ? "Monat" : "Jahr"})</span>`}</li>
-        <li>Tarif: <strong>${fmtEUR.format(lastTotals.monat)}</strong> / ${fmtEUR.format(lastTotals.jahr)}</li>
-        <li>Δ zum Tarif: <strong>${dM}</strong> / <strong>${dJ}</strong></li>
-      </ul>`;
+      <div class="tile">
+        <h3>AT-Vergleich</h3>
+        <ul class="list">
+          <li>AT-Angebot (${basis} h):
+            <span class="muted">Monat:</span> <strong>${fmtEUR.format(monat)}</strong>
+            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(jahr)}</strong>
+          </li>
+          <li>AT-Mindestentgelt (${basis} h):
+            <span class="muted">Monat:</span> <strong>${fmtEUR.format(min.monat)}</strong>
+            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(min.jahr)}</strong>
+          </li>
+          <li>
+            ${minOk
+              ? `<span class="icon pos">▲</span> Angebot über Mindestentgelt (${isMon ? "Monat" : "Jahr"})`
+              : `<span class="icon neg">▼</span> Angebot unter Mindestentgelt (${isMon ? "Monat" : "Jahr"})`}
+          </li>
+          <li>Tarif:
+            <span class="muted">Monat:</span> <strong>${fmtEUR.format(lastTotals.monat)}</strong>
+            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(lastTotals.jahr)}</strong>
+          </li>
+          <li>Δ zum Tarif:
+            <span class="muted">Monat:</span>
+            <span class="${dMonat>=0?"pos":"neg"}">${diffIcon(dMonat)} ${diffVal(dMonat)}</span>
+            <span class="muted">Jahr:</span>
+            <span class="${dJahr>=0?"pos":"neg"}">${diffIcon(dJahr)} ${diffVal(dJahr)}</span>
+          </li>
+        </ul>
+      </div>`;
     els.atResult.classList.remove("hidden");
   }
 
