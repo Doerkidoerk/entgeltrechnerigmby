@@ -1,10 +1,10 @@
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   const els = {
-    tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), eg: $("egSelect"), egLabel: $("egLabel"),
+    tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
     stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
     irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
     leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Recalc on input (debounced)
     const recalc = debounce(calculate, 120);
-    [els.tariffDate, els.ausbildung, els.eg, els.stufe, els.irwaz, els.irwazRange, els.leistung, els.leistungRange,
+    [els.tariffDate, els.ausbildung, els.kinder, els.eg, els.stufe, els.irwaz, els.irwazRange, els.leistung, els.leistungRange,
      els.uTage, els.uTageRange, els.betriebs, els.period]
      .forEach(el => el && el.addEventListener("input", recalc));
 
@@ -226,8 +226,11 @@ document.addEventListener("DOMContentLoaded", () => {
       els.atCompare.disabled = true;
       els.atWrap.classList.add("hidden");
       els.atResult.classList.add("hidden");
+      els.kinderWrap.classList.remove("hidden");
     } else {
       els.atCompare.disabled = false;
+      els.kinderWrap.classList.add("hidden");
+      els.kinder.value = "nein";
     }
   }
 
@@ -254,7 +257,8 @@ document.addEventListener("DOMContentLoaded", () => {
       tariffDate: els.tariffDate.value, eg: els.eg.value, stufe: els.stufe.value || undefined,
       irwazHours: Number(els.irwaz.value), leistungsPct: Number(els.leistung.value),
       urlaubstage: Number(els.uTage.value),
-      betriebsMonate: Number(els.betriebs.value), tZugBPeriod: els.period.value
+      betriebsMonate: Number(els.betriebs.value), tZugBPeriod: els.period.value,
+      eigeneKinder: els.kinder.value === "ja"
     };
     setStatus("Berechne…","muted");
     try{
@@ -276,7 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
     els.result.innerHTML = `
       <div class="subgrid">
         <div class="tile"><h3>Monat</h3><div class="big">${fmtEUR.format(t.monat)}</div>
-          <div class="micro muted">Grund: ${fmtEUR.format(b.grund)} · Bonus: ${fmtEUR.format(b.bonus)}</div></div>
+          <div class="micro muted">Grund: ${fmtEUR.format(b.grund)} · Bonus: ${fmtEUR.format(b.bonus)}${b.kinderzulage ? ` · Zulage: ${fmtEUR.format(b.kinderzulage)}` : ""}</div></div>
         <div class="tile"><h3>Jahr</h3><div class="big">${fmtEUR.format(t.jahr)}</div>
           <div class="micro muted">Ø Monat: ${fmtEUR.format(t.durchschnittMonat)}</div></div>
         <div class="tile">
@@ -361,7 +365,8 @@ document.addEventListener("DOMContentLoaded", () => {
       tariffDate: els.tariffDate.value, eg: els.eg.value, stufe: els.stufe.value || undefined,
       irwazHours: Number(els.irwaz.value), leistungsPct: Number(els.leistung.value),
       urlaubstage: Number(els.uTage.value),
-      betriebsMonate: Number(els.betriebs.value), tZugBPeriod: els.period.value
+      betriebsMonate: Number(els.betriebs.value), tZugBPeriod: els.period.value,
+      eigeneKinder: els.kinder.value === "ja"
     };
   }
   function saveSnapshot(){
@@ -406,6 +411,8 @@ document.addEventListener("DOMContentLoaded", () => {
     els.betriebs.value = "36";
     els.period.value = "until2025";
     els.ausbildung.value = "nein";
+    els.kinder.value = "nein";
+    els.kinderWrap.classList.add("hidden");
     els.atCompare.value = "nein";
     els.atWrap.classList.add("hidden");
     els.atAmount.value = "";
