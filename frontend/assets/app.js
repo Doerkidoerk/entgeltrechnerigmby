@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
       avg: fmtEUR.format(lastTotals.durchschnittMonat)
     }));
     toast("Snapshot gespeichert");
-    maybeCompare();
+    maybeCompare({ totals: lastTotals });
   }
   function clearSnapshot(){
     localStorage.removeItem("rechner.snapshot.kpis");

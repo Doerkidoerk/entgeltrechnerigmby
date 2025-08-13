@@ -102,6 +102,8 @@ input[type=range]::-moz-range-thumb{height:18px;width:18px;border-radius:50%;bac
 .btn.subtle{background:linear-gradient(135deg, rgba(106,167,255,.20), rgba(98,228,207,.20));color:var(--text);border:1px solid var(--line)}
 .icon-btn{display:inline-grid;place-items:center;height:36px;width:36px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
 .icon-btn:hover{background:rgba(255,255,255,.06)}
+.icon-btn svg{display:block}
+.icon-btn svg path{fill:currentColor}
 
 /* ==== Status/Toast ==== */
 .pill{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);font-size:.85rem}
