@@ -1,6 +1,6 @@
 # Entgeltrechner
 
-Version 1.5 – optionaler AT-Gehalt-Vergleich integriert.
+Version 1.6 – Kinderzulage und T-ZUG-Berechnung für Auszubildende.
 
 Eine kleine Webanwendung zur Berechnung des Entgelts nach der IG Metall Tariftabelle für die bayerische Metall- und Elektroindustrie. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die verschiedenen Entgeltsbestandteile übersichtlich dar.
 

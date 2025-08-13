@@ -49,4 +49,23 @@ describe('POST /api/calc', () => {
     expect(res20.body.breakdown.urlaub.gesamt)
       .toBeCloseTo(res30.body.breakdown.urlaub.gesamt * (20 / 30), 2);
   });
+
+  test('Azubis erhalten Kinderzulage und T-ZUG B basiert auf Ausbildungsvergütung', async () => {
+    const res = await request(app)
+      .post('/api/calc')
+      .send({
+        tariffDate: 'april2025',
+        eg: 'AJ1',
+        irwazHours: 35,
+        leistungsPct: 0,
+        urlaubstage: 0,
+        betriebsMonate: 0,
+        tZugBPeriod: 'until2025',
+        eigeneKinder: true
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.breakdown.kinderzulage).toBeCloseTo(632, 2);
+    expect(res.body.breakdown.tZugB).toBeCloseTo(233.84, 2);
+  });
 });

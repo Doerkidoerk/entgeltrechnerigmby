@@ -88,7 +88,7 @@ function getTable(key) {
 function calculate(input) {
   const {
     tariffDate, eg, stufe, irwazHours, leistungsPct,
-    urlaubstage, betriebsMonate, tZugBPeriod
+    urlaubstage, betriebsMonate, tZugBPeriod, eigeneKinder
   } = input;
 
   const tbl = getTable(tariffDate);
@@ -106,6 +106,7 @@ function calculate(input) {
   const grund = grund35 * (irwazHours / 35);
   const isAzubi = /^AJ/.test(eg);
   const bonus = isAzubi ? 0 : grund * (leistungsPct / 100);
+  const kinderZulage = isAzubi && eigeneKinder ? grund * 0.5 : 0;
 
   // p13 nach Betriebszugehörigkeit
   let p13 = 0;
@@ -125,14 +126,15 @@ function calculate(input) {
     throw new Error(`T-ZUG B Basis (EG05.B) fehlt in Tabelle '${tzugKey}'`);
   }
   const pTZUGB = (tZugBPeriod === "from2026") ? 26.5 : 18.5;
-  const tZugB = baseTbl.EG05.B * (pTZUGB / 100);
+  const tZugB = isAzubi ? grund * (pTZUGB / 100) : baseTbl.EG05.B * (pTZUGB / 100);
 
   const utage = urlaubstage; // Anzahl der Urlaubstage
   const utag = utage ? (((grund + bonus) / 65.25) * 1.5) : 0; // Entgelt pro Tag
   const uges = utag * utage; // Urlaubsgeld gesamt
 
-  const gesMon = grund + bonus;
-  const gesJahr = gesMon * 12 + mon13 + tGeld + tZugA + tZugB + uges;
+  const gesMonBasis = grund + bonus;
+  const gesMon = gesMonBasis + kinderZulage;
+  const gesJahr = gesMonBasis * 12 + kinderZulage * 12 + mon13 + tGeld + tZugA + tZugB + uges;
 
   return {
     breakdown: {
@@ -140,6 +142,7 @@ function calculate(input) {
       irwazHours,
       grund: euro(grund),
       bonus: euro(bonus),
+      kinderzulage: euro(kinderZulage),
       p13,
       mon13: euro(mon13),
       tGeld: euro(tGeld),
@@ -168,7 +171,8 @@ const CalcSchema = z.object({
   leistungsPct: z.number().min(0).max(28),
   urlaubstage: z.number().int().min(0).max(36),
   betriebsMonate: z.number().int().min(0).max(480),
-  tZugBPeriod: z.enum(["until2025","from2026"])
+  tZugBPeriod: z.enum(["until2025","from2026"]),
+  eigeneKinder: z.boolean().optional().default(false)
 });
 
 /** Routen */
