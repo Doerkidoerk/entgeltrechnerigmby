@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     status: $("status"), tablesInfo: $("tablesInfo"), azubiHint: $("azubiHint"),
     irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
     result: $("result"),
-    calcBtn: $("calcBtn"), resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
+    resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
     compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
     cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
     cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
@@ -104,7 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
       recalc();
     });
 
-    els.calcBtn.addEventListener("click", calculate);
     els.resetBtn.addEventListener("click", resetForm);
     els.snapshotBtn.addEventListener("click", saveSnapshot);
     els.clearSnapshotBtn.addEventListener("click", clearSnapshot);
