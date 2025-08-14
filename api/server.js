@@ -16,10 +16,12 @@ const PORT = process.env.PORT || 3001;
 const DATA_DIR = path.join(__dirname, "data");
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"]; // custom sort order
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const INVITES_FILE = path.join(DATA_DIR, "invites.json");
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60; // default 1h
 
 let users = Object.create(null); // { username: { salt, hash, isAdmin, mustChangePassword } }
 let sessions = Object.create(null); // { token: { username, expires } }
+let invites = Object.create(null); // { code: { used: bool, user: string|null } }
 
 function loadUsers(){
   try {
@@ -37,6 +39,20 @@ function saveUsers(){
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+function loadInvites(){
+  try {
+    const buf = fs.readFileSync(INVITES_FILE, "utf8");
+    invites = JSON.parse(buf);
+  } catch {
+    invites = {};
+    saveInvites();
+  }
+}
+
+function saveInvites(){
+  fs.writeFileSync(INVITES_FILE, JSON.stringify(invites, null, 2));
+}
+
 function hashPassword(pw, salt){
   return crypto.scryptSync(pw, salt, 64).toString("hex");
 }
@@ -52,6 +68,17 @@ function createToken(){
 
 function isStrongPassword(p){
   return typeof p === "string" && p.length >= 8;
+}
+
+function createInviteCode(){
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code;
+  do {
+    code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  } while (invites[code]);
+  invites[code] = { used: false, user: null };
+  saveInvites();
+  return code;
 }
 
 app.disable("x-powered-by");
@@ -95,7 +122,7 @@ async function loadAllTables() {
     const meta = Object.create(null);
 
   await fsp.mkdir(DATA_DIR, { recursive: true });
-  const files = (await fsp.readdir(DATA_DIR)).filter(f => f.endsWith(".json") && f !== "users.json");
+  const files = (await fsp.readdir(DATA_DIR)).filter(f => f.endsWith(".json") && !["users.json","invites.json"].includes(f));
 
   for (const file of files) {
     const key = path.basename(file, ".json"); // z.B. "current"
@@ -145,6 +172,7 @@ if (process.env.NODE_ENV !== "test") {
 }
 
 loadUsers();
+loadInvites();
 
 /** Hilfsfunktionen */
 const euro = n => Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
@@ -254,6 +282,22 @@ const CalcSchema = z.object({
   eigeneKinder: z.boolean().optional().default(false)
 });
 
+app.post("/api/register", ensureHttps, (req, res) => {
+  const { username, password, code } = req.body || {};
+  if (!username || !password || !code) return res.status(400).json({ error: "Missing fields" });
+  if (users[username]) return res.status(400).json({ error: "User exists" });
+  if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
+  const inv = invites[code];
+  if (!inv || inv.used) return res.status(400).json({ error: "Invalid code" });
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = hashPassword(password, salt);
+  users[username] = { salt, hash, isAdmin: false, mustChangePassword: false };
+  invites[code] = { used: true, user: username };
+  saveUsers();
+  saveInvites();
+  res.json({ ok: true });
+});
+
 app.post("/api/login", ensureHttps, (req, res) => {
   const { username, password } = req.body || {};
   const user = users[username];
@@ -330,8 +374,21 @@ app.delete("/api/users/:username", authMiddleware, requireAdmin, (req, res) => {
   for (const t of Object.keys(sessions)) {
     if (sessions[t].username === name) delete sessions[t];
   }
+  for (const code of Object.keys(invites)) {
+    if (invites[code].user === name) invites[code] = { used: true, user: null };
+  }
   saveUsers();
+  saveInvites();
   res.json({ ok: true });
+});
+
+app.get("/api/invites", authMiddleware, requireAdmin, (_req, res) => {
+  res.json({ invites });
+});
+
+app.post("/api/invites", authMiddleware, requireAdmin, (_req, res) => {
+  const code = createInviteCode();
+  res.json({ code });
 });
 
 /** Routen */

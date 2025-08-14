@@ -178,3 +178,50 @@ describe('admin user management', () => {
     expect(list.body.users.find(u => u.username === 'charlie')).toBeUndefined();
   });
 });
+
+describe('invitation registration', () => {
+  test('users can register with invite code and codes are single-use', async () => {
+    const admin = await loginAs();
+    const gen = await request(app)
+      .post('/api/invites')
+      .set('Authorization', `Bearer ${admin.body.token}`);
+    expect(gen.status).toBe(200);
+    const code = gen.body.code;
+    expect(code).toMatch(/^[A-Z0-9]{6}$/);
+    const reg = await https(request(app).post('/api/register'))
+      .send({ username: 'dave', password: 'pass1234', code });
+    expect(reg.status).toBe(200);
+    const loginDave = await loginAs('dave', 'pass1234');
+    expect(loginDave.status).toBe(200);
+    const reuse = await https(request(app).post('/api/register'))
+      .send({ username: 'eve', password: 'pass1234', code });
+    expect(reuse.status).toBe(400);
+    const admin2 = await loginAs();
+    await request(app)
+      .delete('/api/users/dave')
+      .set('Authorization', `Bearer ${admin2.body.token}`);
+    const reuse2 = await https(request(app).post('/api/register'))
+      .send({ username: 'frank', password: 'pass1234', code });
+    expect(reuse2.status).toBe(400);
+  });
+});
+
+describe('user password change', () => {
+  test('user can change own password', async () => {
+    const admin = await loginAs();
+    await https(request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${admin.body.token}`))
+      .send({ username: 'self', password: 'pass1234' });
+    const loginSelf = await loginAs('self', 'pass1234');
+    const change = await https(request(app)
+      .post('/api/change-password')
+      .set('Authorization', `Bearer ${loginSelf.body.token}`))
+      .send({ oldPassword: 'pass1234', newPassword: 'newpass123' });
+    expect(change.status).toBe(200);
+    const failOld = await loginAs('self', 'pass1234');
+    expect(failOld.status).toBe(401);
+    const okNew = await loginAs('self', 'newpass123');
+    expect(okNew.status).toBe(200);
+  });
+});

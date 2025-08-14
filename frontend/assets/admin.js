@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const newUserPass2 = document.getElementById('newUserPass2');
   const createBtn = document.getElementById('createUserBtn');
   const err = document.getElementById('createUserError');
+  const inviteList = document.getElementById('inviteList');
+  const genInviteBtn = document.getElementById('genInviteBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   let token = localStorage.getItem('token') || '';
   const isAdmin = localStorage.getItem('isAdmin') === '1';
@@ -84,6 +86,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  genInviteBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetchJSON('/api/invites', { method: 'POST' });
+      alert('Neuer Code: ' + res.code);
+      loadInvites();
+    } catch(e){
+      alert('Fehler: ' + e.message);
+    }
+  });
+
+  async function loadInvites(){
+    try {
+      const res = await fetchJSON('/api/invites');
+      inviteList.innerHTML = '<ul>' + Object.entries(res.invites).map(([c,i]) => {
+        const state = i.used ? (i.user ? `verwendet von ${i.user}` : 'verwendet') : 'frei';
+        return `<li>${c}: ${state}</li>`;
+      }).join('') + '</ul>';
+    } catch(e){
+      inviteList.textContent = 'Fehler: ' + e.message;
+    }
+  }
+
   async function deleteUser(name){
     if (!confirm(`User ${name} löschen?`)) return;
     try {
@@ -113,4 +137,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loadUsers();
+  loadInvites();
 });

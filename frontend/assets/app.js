@@ -1,4 +1,4 @@
-const APP_VERSION = "1.10";
+const APP_VERSION = "1.11";
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
 // Robust gegen Lade-/Reihenfolgeprobleme
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
       atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
       atResult: $("atCompareResult"),
       themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion"),
-      logoutBtn: $("logoutBtn"), adminLink: $("adminLink")
+      logoutBtn: $("logoutBtn"), adminLink: $("adminLink"), pwLink: $("pwChangeLink")
     };
 
   els.version.textContent = APP_VERSION;
