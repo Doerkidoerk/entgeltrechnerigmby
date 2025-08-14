@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btn.addEventListener('click', async () => {
     err.textContent = '';
+    if (location.protocol !== 'https:') {
+      err.textContent = 'HTTPS erforderlich';
+      return;
+    }
     if (newPw.value !== newPw2.value) {
       err.textContent = 'Passwörter stimmen nicht überein';
       return;

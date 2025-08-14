@@ -79,6 +79,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function ensureHttps(req, res, next) {
+  if (process.env.NODE_ENV === "test") return next();
+  const proto = req.headers["x-forwarded-proto"] || req.protocol;
+  if (proto === "https") return next();
+  res.status(400).json({ error: "HTTPS required" });
+}
+
 /** --- Tabellen laden --- */
 let tablesByKey = Object.create(null);
 let tablesMeta = Object.create(null); // { key: { mtimeMs, bytes } }
@@ -247,7 +254,7 @@ const CalcSchema = z.object({
   eigeneKinder: z.boolean().optional().default(false)
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", ensureHttps, (req, res) => {
   const { username, password } = req.body || {};
   const user = users[username];
   if (!user || !verifyPassword(user, password)) {
@@ -258,7 +265,7 @@ app.post("/api/login", (req, res) => {
   res.json({ token, isAdmin: !!user.isAdmin, mustChangePassword: !!user.mustChangePassword, expires: SESSION_TTL_MS });
 });
 
-app.post("/api/change-password", authMiddleware, (req, res) => {
+app.post("/api/change-password", ensureHttps, authMiddleware, (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
   if (!oldPassword || !newPassword) return res.status(400).json({ error: "Missing fields" });
   if (!isStrongPassword(newPassword)) return res.status(400).json({ error: "Weak password" });
@@ -287,7 +294,7 @@ app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
   res.json({ users: list });
 });
 
-app.post("/api/users", authMiddleware, requireAdmin, (req, res) => {
+app.post("/api/users", ensureHttps, authMiddleware, requireAdmin, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: "Missing fields" });
   if (users[username]) return res.status(400).json({ error: "User exists" });
@@ -299,7 +306,7 @@ app.post("/api/users", authMiddleware, requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.put("/api/users/:username/password", authMiddleware, requireAdmin, (req, res) => {
+app.put("/api/users/:username/password", ensureHttps, authMiddleware, requireAdmin, (req, res) => {
   const name = req.params.username;
   const { password } = req.body || {};
   if (!users[name]) return res.status(404).json({ error: "User not found" });

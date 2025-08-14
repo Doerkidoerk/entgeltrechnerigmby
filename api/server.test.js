@@ -2,6 +2,10 @@ process.env.SESSION_TTL_MS = '100';
 const request = require('supertest');
 const app = require('./server');
 
+const https = r => r.set('X-Forwarded-Proto', 'https');
+const loginAs = (username = 'admin', password = 'admin') =>
+  https(request(app).post('/api/login')).send({ username, password });
+
 describe('POST /api/calc', () => {
   const payload = {
     tariffDate: 'april2025',
@@ -16,9 +20,7 @@ describe('POST /api/calc', () => {
   let token;
   beforeAll(async () => {
     await new Promise(res => setTimeout(res, 100));
-    const login = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const login = await loginAs();
     token = login.body.token;
   });
 
@@ -82,20 +84,16 @@ describe('POST /api/calc', () => {
 
 describe('security features', () => {
   test('rejects weak passwords on user creation', async () => {
-    const login = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
-    const res = await request(app)
+    const login = await loginAs();
+    const res = await https(request(app)
       .post('/api/users')
-      .set('Authorization', `Bearer ${login.body.token}`)
+      .set('Authorization', `Bearer ${login.body.token}`))
       .send({ username: 'u1', password: '123' });
     expect(res.status).toBe(400);
   });
 
   test('lists users for admin', async () => {
-    const login = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const login = await loginAs();
     const res = await request(app)
       .get('/api/users')
       .set('Authorization', `Bearer ${login.body.token}`);
@@ -106,9 +104,7 @@ describe('security features', () => {
   });
 
   test('sessions expire after ttl', async () => {
-    const login = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const login = await loginAs();
     const token = login.body.token;
     await new Promise(r => setTimeout(r, 200));
     const res = await request(app)
@@ -118,9 +114,7 @@ describe('security features', () => {
   });
 
   test('logout invalidates session', async () => {
-    const login = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const login = await loginAs();
     const token = login.body.token;
     const out = await request(app)
       .post('/api/logout')
@@ -135,67 +129,49 @@ describe('security features', () => {
 
 describe('admin user management', () => {
   test('newly created users need not change password', async () => {
-    const loginAdmin = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const loginAdmin = await loginAs();
     const token = loginAdmin.body.token;
-    const res = await request(app)
+    const res = await https(request(app)
       .post('/api/users')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Authorization', `Bearer ${token}`))
       .send({ username: 'alice', password: 'pass1234' });
     expect(res.status).toBe(200);
-    const loginUser = await request(app)
-      .post('/api/login')
-      .send({ username: 'alice', password: 'pass1234' });
+    const loginUser = await loginAs('alice', 'pass1234');
     expect(loginUser.status).toBe(200);
     expect(loginUser.body.mustChangePassword).toBe(false);
   });
 
   test('admin can reset passwords', async () => {
-    const admin1 = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
-    await request(app)
+    const admin1 = await loginAs();
+    await https(request(app)
       .post('/api/users')
-      .set('Authorization', `Bearer ${admin1.body.token}`)
+      .set('Authorization', `Bearer ${admin1.body.token}`))
       .send({ username: 'bob', password: 'oldpass123' });
-    const admin2 = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
-    const reset = await request(app)
+    const admin2 = await loginAs();
+    const reset = await https(request(app)
       .put('/api/users/bob/password')
-      .set('Authorization', `Bearer ${admin2.body.token}`)
+      .set('Authorization', `Bearer ${admin2.body.token}`))
       .send({ password: 'newpass123' });
     expect(reset.status).toBe(200);
-    const oldLogin = await request(app)
-      .post('/api/login')
-      .send({ username: 'bob', password: 'oldpass123' });
+    const oldLogin = await loginAs('bob', 'oldpass123');
     expect(oldLogin.status).toBe(401);
-    const newLogin = await request(app)
-      .post('/api/login')
-      .send({ username: 'bob', password: 'newpass123' });
+    const newLogin = await loginAs('bob', 'newpass123');
     expect(newLogin.status).toBe(200);
     expect(newLogin.body.mustChangePassword).toBe(false);
   });
 
   test('admin can delete users', async () => {
-    const admin1 = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
-    await request(app)
+    const admin1 = await loginAs();
+    await https(request(app)
       .post('/api/users')
-      .set('Authorization', `Bearer ${admin1.body.token}`)
+      .set('Authorization', `Bearer ${admin1.body.token}`))
       .send({ username: 'charlie', password: 'pass1234' });
-    const admin2 = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const admin2 = await loginAs();
     const del = await request(app)
       .delete('/api/users/charlie')
       .set('Authorization', `Bearer ${admin2.body.token}`);
     expect(del.status).toBe(200);
-    const admin3 = await request(app)
-      .post('/api/login')
-      .send({ username: 'admin', password: 'admin' });
+    const admin3 = await loginAs();
     const list = await request(app)
       .get('/api/users')
       .set('Authorization', `Bearer ${admin3.body.token}`);

@@ -61,6 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   createBtn.addEventListener('click', async () => {
     err.textContent = '';
+    if (location.protocol !== 'https:') {
+      err.textContent = 'HTTPS erforderlich';
+      return;
+    }
     if (newUserPass.value !== newUserPass2.value) {
       err.textContent = 'Passwörter stimmen nicht überein';
       return;
@@ -95,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!p1) return;
     const p2 = prompt('Passwort wiederholen:');
     if (p1 !== p2){ alert('Passwörter stimmen nicht überein'); return; }
+    if (location.protocol !== 'https:') { alert('HTTPS erforderlich'); return; }
     try {
       await fetchJSON(`/api/users/${encodeURIComponent(name)}/password`, {
         method:'PUT',

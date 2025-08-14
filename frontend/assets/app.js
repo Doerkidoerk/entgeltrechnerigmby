@@ -1,4 +1,4 @@
-const APP_VERSION = "1.9";
+const APP_VERSION = "1.10";
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
 // Robust gegen Lade-/Reihenfolgeprobleme
@@ -218,6 +218,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function handleLogin(){
     loginError.textContent = "";
+    if (location.protocol !== 'https:') {
+      loginError.textContent = 'HTTPS erforderlich';
+      return;
+    }
     try {
       const res = await fetchJSON("/api/login", {
         method: "POST",
