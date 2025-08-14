@@ -3,36 +3,33 @@ const APP_VERSION = "1.6";
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
-  const els = {
-    tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
-    stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
-    irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
-    leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
-    uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
-    betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
-    status: $("status"), tablesInfo: $("tablesInfo"), azubiHint: $("azubiHint"),
-    irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
-    result: $("result"),
-    resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
-    compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
-    cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
-    cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
-    atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
-    atResult: $("atCompareResult"),
-    themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
-  };
+    const els = {
+      tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
+      stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
+      irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
+      leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
+      uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
+      betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
+      status: $("status"), azubiHint: $("azubiHint"),
+      irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
+      result: $("result"),
+      resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
+      compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
+      cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
+      cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
+      atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
+      atResult: $("atCompareResult"),
+      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
+    };
 
   els.version.textContent = APP_VERSION;
 
-  const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
-  const fmtPct = n => Number(n).toFixed(2) + " %";
-  const fmtHours = n => Number(n).toFixed(1) + " h";
-  const atMin = {
-    mai2024: { "35": { monat: 8252.82, jahr: 102488.80 }, "40": { monat: 9431.24, jahr: 117077.40 } },
-    april2025: { "35": { monat: 8417.25, jahr: 104490.00 }, "40": { monat: 9619.16, jahr: 119410.20 } },
-    april2026: { "35": { monat: 8678.25, jahr: 107730.00 }, "40": { monat: 9918.00, jahr: 123120.00 } }
-  };
-  let lastTotals = null;
+    const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+    const fmtPct = n => Number(n).toFixed(2) + " %";
+    const fmtHours = n => Number(n).toFixed(1) + " h";
+    let atMin = {};
+    let currentTable = {};
+    let lastTotals = null;
 
   // Helpers
   function setStatus(text, cls){ els.status.textContent = text; els.status.className = `pill ${cls||""}`.trim(); }
@@ -76,14 +73,13 @@ document.addEventListener("DOMContentLoaded", () => {
     try { await fetchJSON("/api/health"); setStatus("API OK","ok"); }
     catch { setStatus("API down","err"); }
 
-    try {
-      const meta = await fetchJSON("/api/tables");
-      els.tablesInfo.textContent = `Tabellen: ${meta.keys.map(formatTariffDate).join(", ")||"—"}`;
-      els.tariffDate.innerHTML = meta.keys.map(k=>`<option value="${k}">${formatTariffDate(k)}</option>`).join("");
-      els.tariffDate.value = meta.keys.includes("current") ? "current" : meta.keys[0] || "";
-      await loadEGs();
-      updateAzubiHint();
-    } catch(e){ console.error(e); els.tablesInfo.textContent = "Tabellen: —"; }
+      try {
+        const meta = await fetchJSON("/api/tables");
+        els.tariffDate.innerHTML = meta.keys.map(k=>`<option value="${k}">${formatTariffDate(k)}</option>`).join("");
+        els.tariffDate.value = meta.keys.includes("current") ? "current" : meta.keys[0] || "";
+        await loadEGs();
+        updateAzubiHint();
+      } catch(e){ console.error(e); }
 
     // Slider <-> Number verknüpfen + Badges
     link(els.irwaz, els.irwazRange, v => els.irwazBadge.textContent = fmtHours(v));
@@ -96,26 +92,21 @@ document.addEventListener("DOMContentLoaded", () => {
      els.uTage, els.uTageRange, els.betriebs, els.period]
      .forEach(el => el && el.addEventListener("input", recalc));
 
-    els.tariffDate.addEventListener("change", async () => {
-      const data = await fetch(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`).then(r=>r.json());
-      updateStufen(data.table);
-      updateBetriebsFromAJ();
-      updateAzubiHint();
-      updateAusbildungSettings();
-      recalc();
-    });
-    els.eg.addEventListener("change", async () => {
-      const data = await fetch(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`).then(r=>r.json());
-      updateStufen(data.table);
-      updateBetriebsFromAJ();
-      recalc();
-    });
-    els.ausbildung.addEventListener("change", async () => {
-      await loadEGs();
-      updateAzubiHint();
-      updateAusbildungSettings();
-      recalc();
-    });
+      els.tariffDate.addEventListener("change", async () => {
+        await loadEGs();
+        updateAzubiHint();
+        recalc();
+      });
+      els.eg.addEventListener("change", () => {
+        updateStufen(currentTable);
+        updateBetriebsFromAJ();
+        recalc();
+      });
+      els.ausbildung.addEventListener("change", async () => {
+        await loadEGs();
+        updateAzubiHint();
+        recalc();
+      });
 
     [els.atAmount, els.atType, els.atHours].forEach(el => el && el.addEventListener("input", renderATComparison));
     els.atCompare.addEventListener("change", () => {
@@ -136,13 +127,15 @@ document.addEventListener("DOMContentLoaded", () => {
     calculate();
   })();
 
-  async function loadEGs() {
-    if (!els.tariffDate.value) return;
-    const data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
-    const table = data.table || {};
-    const prevEg = els.eg.value;
-    const prevStufe = els.stufe.value;
-    let egs = Object.keys(table).sort();
+    async function loadEGs() {
+      if (!els.tariffDate.value) return;
+      const data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
+      currentTable = data.table || {};
+      atMin = data.atMin || {};
+      const table = currentTable;
+      const prevEg = els.eg.value;
+      const prevStufe = els.stufe.value;
+      let egs = Object.keys(table).sort();
     if (els.ausbildung.value === "ja") {
       egs = egs.filter(k=>/^AJ/.test(k));
       els.egLabel.textContent = "Auszubildendenvergütung";
@@ -162,9 +155,9 @@ document.addEventListener("DOMContentLoaded", () => {
         els.stufe.value = "B";
       }
     }
-    updateBetriebsFromAJ();
-    updateAusbildungSettings();
-  }
+      updateBetriebsFromAJ();
+      updateAusbildungSettings();
+    }
 
   function updateStufen(table){
     const egKey = els.eg.value;
@@ -318,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const monat = isMon ? amount : amount / 12;
     const jahr = isMon ? amount * 12 : amount;
     const basis = els.atHours.value;
-    const min = atMin[els.tariffDate.value]?.[basis];
+    const min = atMin?.[basis];
     if (!min){
       els.atResult.classList.add("hidden");
       return;
