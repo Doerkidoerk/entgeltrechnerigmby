@@ -92,12 +92,40 @@ describe('security features', () => {
     expect(res.status).toBe(400);
   });
 
+  test('lists users for admin', async () => {
+    const login = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const res = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${login.body.token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.users).toEqual(expect.arrayContaining([
+      expect.objectContaining({ username: 'admin' })
+    ]));
+  });
+
   test('sessions expire after ttl', async () => {
     const login = await request(app)
       .post('/api/login')
       .send({ username: 'admin', password: 'admin' });
     const token = login.body.token;
     await new Promise(r => setTimeout(r, 200));
+    const res = await request(app)
+      .get('/api/tables')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(401);
+  });
+
+  test('logout invalidates session', async () => {
+    const login = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const token = login.body.token;
+    const out = await request(app)
+      .post('/api/logout')
+      .set('Authorization', `Bearer ${token}`);
+    expect(out.status).toBe(200);
     const res = await request(app)
       .get('/api/tables')
       .set('Authorization', `Bearer ${token}`);

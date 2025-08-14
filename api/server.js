@@ -70,6 +70,7 @@ function authMiddleware(req, res, next) {
   }
   req.username = sess.username;
   req.user = users[req.username];
+  req.token = token;
   next();
 }
 
@@ -272,6 +273,20 @@ app.post("/api/change-password", authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+app.post("/api/logout", authMiddleware, (req, res) => {
+  delete sessions[req.token];
+  res.json({ ok: true });
+});
+
+app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
+  const list = Object.entries(users).map(([username, u]) => ({
+    username,
+    isAdmin: !!u.isAdmin,
+    mustChangePassword: !!u.mustChangePassword
+  }));
+  res.json({ users: list });
+});
+
 app.post("/api/users", authMiddleware, requireAdmin, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: "Missing fields" });
@@ -279,7 +294,7 @@ app.post("/api/users", authMiddleware, requireAdmin, (req, res) => {
   if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = hashPassword(password, salt);
-  users[username] = { salt, hash, isAdmin: false, mustChangePassword: false };
+  users[username] = { salt, hash, isAdmin: false, mustChangePassword: true };
   saveUsers();
   res.json({ ok: true });
 });

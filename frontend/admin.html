@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="auto">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Userverwaltung</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+  <script defer src="/assets/admin.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h2>Userverwaltung</h2>
+      <div id="userList" class="field"></div>
+      <h3>Neuen User anlegen</h3>
+      <div class="field"><label for="newUserName">Benutzername</label><input id="newUserName" type="text" /></div>
+      <div class="field"><label for="newUserPass">Passwort</label><input id="newUserPass" type="password" /></div>
+      <div class="field"><label for="newUserPass2">Passwort (Wiederholung)</label><input id="newUserPass2" type="password" /></div>
+      <div class="actions">
+        <button id="createUserBtn" class="btn" type="button">Anlegen</button>
+        <a href="/" class="btn subtle">Zurück</a>
+        <button id="logoutBtn" class="btn subtle" type="button">Logout</button>
+      </div>
+      <div id="createUserError" class="muted small"></div>
+    </div>
+  </div>
+</body>
+</html>

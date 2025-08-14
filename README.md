@@ -1,6 +1,6 @@
 # Entgeltrechner
 
-Version 1.7 – einfache Nutzerverwaltung mit Admin-Account.
+Version 1.8 – einfache Nutzerverwaltung mit Admin-Account.
 
 Eine kleine Webanwendung zur Berechnung des Entgelts nach der IG Metall Tariftabelle für die bayerische Metall- und Elektroindustrie. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die verschiedenen Entgeltsbestandteile übersichtlich dar.
 
@@ -11,7 +11,7 @@ WebApp mit zwei Komponenten:
 
 ## Benutzerverwaltung
 
-Standardmäßig existiert der Benutzer `admin` mit dem Passwort `admin`. Nach dem ersten Login wird eine Passwortänderung verlangt. Passwörter müssen mindestens 8 Zeichen lang sein. Sitzungen laufen nach einer Stunde automatisch ab. Nur angemeldete Benutzer können den Entgeltrechner verwenden. Neue Benutzer können im Admin-Bereich angelegt werden.
+Standardmäßig existiert der Benutzer `admin` mit dem Passwort `admin`. Nach dem ersten Login wird eine Passwortänderung verlangt, die auf einer eigenen Seite mit doppelter Eingabe erfolgt. Passwörter müssen mindestens 8 Zeichen lang sein. Sitzungen laufen nach einer Stunde automatisch ab. Nur angemeldete Benutzer können den Entgeltrechner verwenden. Ein Logout-Button beendet die Sitzung. Neue Benutzer können im Admin-Bereich angelegt werden, der über die Navigationsleiste erreichbar ist.
 
 ## Voraussetzungen
 

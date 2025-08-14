@@ -1,4 +1,4 @@
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
 // Robust gegen Lade-/Reihenfolgeprobleme
@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   const loginPanel = $("loginPanel"), loginUser = $("loginUser"), loginPass = $("loginPass"), loginBtn = $("loginBtn"), loginError = $("loginError"), appWrap = $("app");
   let authToken = localStorage.getItem("token") || "";
-  let userInfo = null;
+  let isAdmin = localStorage.getItem("isAdmin") === "1";
     const els = {
       tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
       stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
@@ -23,10 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
       cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
       atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
       atResult: $("atCompareResult"),
-      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
+      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion"),
+      logoutBtn: $("logoutBtn"), adminLink: $("adminLink")
     };
 
   els.version.textContent = APP_VERSION;
+  els.logoutBtn.addEventListener("click", logout);
 
     const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
     const fmtPct = n => Number(n).toFixed(2) + " %";
@@ -78,6 +80,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   })();
 
+  async function logout(){
+    if (authToken) {
+      try { await fetch("/api/logout", { method: "POST", headers: { "Authorization": `Bearer ${authToken}` } }); } catch {}
+    }
+    authToken = "";
+    localStorage.removeItem("token");
+    localStorage.removeItem("isAdmin");
+    els.adminLink.classList.add("hidden");
+    loginPanel.classList.remove("hidden");
+    appWrap.classList.add("hidden");
+  }
+
   // API
   async function fetchJSON(url, opts = {}) {
     const r = await fetch(url, {
@@ -89,10 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
     if (r.status === 401) {
-      authToken = "";
-      localStorage.removeItem("token");
-      loginPanel.classList.remove("hidden");
-      appWrap.classList.add("hidden");
+      logout();
       throw new Error("Unauthorized");
     }
     if (!r.ok) {
@@ -194,6 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function startApp(){
     loginPanel.classList.add("hidden");
     appWrap.classList.remove("hidden");
+    if (isAdmin) els.adminLink.classList.remove("hidden");
     try {
       await init();
     } catch {
@@ -213,41 +225,14 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ username: loginUser.value, password: loginPass.value })
       });
       authToken = res.token;
-      userInfo = res;
       localStorage.setItem("token", authToken);
+      localStorage.setItem("isAdmin", res.isAdmin ? "1" : "0");
+      isAdmin = res.isAdmin;
       if (res.mustChangePassword) {
-        const np = prompt("Neues Passwort setzen:");
-        if (np) {
-          await fetchJSON("/api/change-password", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldPassword: loginPass.value, newPassword: np })
-          });
-        }
+        window.location.href = "/change-password.html";
+        return;
       }
       await startApp();
-      if (res.isAdmin) {
-        const btn = document.createElement("button");
-        btn.textContent = "User anlegen";
-        btn.className = "btn subtle";
-        document.querySelector(".header-actions").appendChild(btn);
-        btn.addEventListener("click", async () => {
-          const u = prompt("Benutzername:");
-          const p = u && prompt("Passwort:");
-          if (u && p) {
-            try {
-              await fetchJSON("/api/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: u, password: p })
-              });
-              toast("User angelegt");
-            } catch(e) {
-              toast("Fehler: " + e.message);
-            }
-          }
-        });
-      }
     } catch(e) {
       loginError.textContent = "Login fehlgeschlagen";
     }
