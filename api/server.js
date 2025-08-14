@@ -13,6 +13,7 @@ const fsp = require("fs/promises");
 const app = express();
 const PORT = process.env.PORT || 3001;
 const DATA_DIR = path.join(__dirname, "data");
+const TARIFF_ORDER = ["mai2024", "april2025", "april2026"]; // custom sort order
 
 app.disable("x-powered-by");
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "same-site" } }));
@@ -193,8 +194,16 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/tables", (_req, res) => {
   res.set("Cache-Control", "public, max-age=300");
+  const keys = Object.keys(tablesByKey).sort((a, b) => {
+    const ia = TARIFF_ORDER.indexOf(a);
+    const ib = TARIFF_ORDER.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
   res.json({
-    keys: Object.keys(tablesByKey),
+    keys,
     meta: tablesMeta
   });
 });

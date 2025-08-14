@@ -1,4 +1,5 @@
 const APP_VERSION = "1.6";
+const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
@@ -75,8 +76,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         const meta = await fetchJSON("/api/tables");
-        els.tariffDate.innerHTML = meta.keys.map(k=>`<option value="${k}">${formatTariffDate(k)}</option>`).join("");
-        els.tariffDate.value = meta.keys.includes("current") ? "current" : meta.keys[0] || "";
+        const keys = meta.keys.slice().sort((a, b) => {
+          const ia = TARIFF_ORDER.indexOf(a);
+          const ib = TARIFF_ORDER.indexOf(b);
+          if (ia !== -1 && ib !== -1) return ia - ib;
+          if (ia !== -1) return -1;
+          if (ib !== -1) return 1;
+          return a.localeCompare(b);
+        });
+        els.tariffDate.innerHTML = keys.map(k=>`<option value="${k}">${formatTariffDate(k)}</option>`).join("");
+        let def = "mai2024";
+        const now = new Date();
+        if (now >= new Date("2025-04-01") && now < new Date("2026-04-01")) def = "april2025";
+        else if (now >= new Date("2026-04-01")) def = "april2026";
+        if (!keys.includes(def)) def = keys[0] || "";
+        els.tariffDate.value = def;
         await loadEGs();
         updateAzubiHint();
       } catch(e){ console.error(e); }
@@ -298,8 +312,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderATComparison(){
-    if (els.atCompare.value !== "ja" || !lastTotals){
+    if (els.atCompare.value !== "ja"){
       els.atResult.classList.add("hidden");
+      return;
+    }
+    if (!lastTotals){
+      calculate();
       return;
     }
     const amount = Number(els.atAmount.value);
