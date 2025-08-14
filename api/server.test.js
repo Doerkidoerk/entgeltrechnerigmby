@@ -132,3 +132,73 @@ describe('security features', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('admin user management', () => {
+  test('newly created users need not change password', async () => {
+    const loginAdmin = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const token = loginAdmin.body.token;
+    const res = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ username: 'alice', password: 'pass1234' });
+    expect(res.status).toBe(200);
+    const loginUser = await request(app)
+      .post('/api/login')
+      .send({ username: 'alice', password: 'pass1234' });
+    expect(loginUser.status).toBe(200);
+    expect(loginUser.body.mustChangePassword).toBe(false);
+  });
+
+  test('admin can reset passwords', async () => {
+    const admin1 = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${admin1.body.token}`)
+      .send({ username: 'bob', password: 'oldpass123' });
+    const admin2 = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const reset = await request(app)
+      .put('/api/users/bob/password')
+      .set('Authorization', `Bearer ${admin2.body.token}`)
+      .send({ password: 'newpass123' });
+    expect(reset.status).toBe(200);
+    const oldLogin = await request(app)
+      .post('/api/login')
+      .send({ username: 'bob', password: 'oldpass123' });
+    expect(oldLogin.status).toBe(401);
+    const newLogin = await request(app)
+      .post('/api/login')
+      .send({ username: 'bob', password: 'newpass123' });
+    expect(newLogin.status).toBe(200);
+    expect(newLogin.body.mustChangePassword).toBe(false);
+  });
+
+  test('admin can delete users', async () => {
+    const admin1 = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${admin1.body.token}`)
+      .send({ username: 'charlie', password: 'pass1234' });
+    const admin2 = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const del = await request(app)
+      .delete('/api/users/charlie')
+      .set('Authorization', `Bearer ${admin2.body.token}`);
+    expect(del.status).toBe(200);
+    const admin3 = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const list = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${admin3.body.token}`);
+    expect(list.body.users.find(u => u.username === 'charlie')).toBeUndefined();
+  });
+});

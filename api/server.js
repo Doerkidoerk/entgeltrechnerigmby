@@ -294,7 +294,35 @@ app.post("/api/users", authMiddleware, requireAdmin, (req, res) => {
   if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = hashPassword(password, salt);
-  users[username] = { salt, hash, isAdmin: false, mustChangePassword: true };
+  users[username] = { salt, hash, isAdmin: false, mustChangePassword: false };
+  saveUsers();
+  res.json({ ok: true });
+});
+
+app.put("/api/users/:username/password", authMiddleware, requireAdmin, (req, res) => {
+  const name = req.params.username;
+  const { password } = req.body || {};
+  if (!users[name]) return res.status(404).json({ error: "User not found" });
+  if (!password) return res.status(400).json({ error: "Missing password" });
+  if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = hashPassword(password, salt);
+  users[name] = { ...users[name], salt, hash, mustChangePassword: false };
+  for (const t of Object.keys(sessions)) {
+    if (sessions[t].username === name) delete sessions[t];
+  }
+  saveUsers();
+  res.json({ ok: true });
+});
+
+app.delete("/api/users/:username", authMiddleware, requireAdmin, (req, res) => {
+  const name = req.params.username;
+  if (name === "admin") return res.status(400).json({ error: "Cannot delete admin" });
+  if (!users[name]) return res.status(404).json({ error: "User not found" });
+  delete users[name];
+  for (const t of Object.keys(sessions)) {
+    if (sessions[t].username === name) delete sessions[t];
+  }
   saveUsers();
   res.json({ ok: true });
 });

@@ -47,7 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadUsers(){
     try {
       const res = await fetchJSON('/api/users');
-      userList.innerHTML = '<ul>' + res.users.map(u => `<li>${u.username}${u.isAdmin ? ' (Admin)' : ''}</li>`).join('') + '</ul>';
+      userList.innerHTML = '<ul>' + res.users.map(u => {
+        const delBtn = u.username !== 'admin' ? ` <button data-del="${u.username}">Löschen</button>` : '';
+        const pwBtn = u.username !== 'admin' ? ` <button data-pw="${u.username}">Passwort setzen</button>` : '';
+        return `<li>${u.username}${u.isAdmin ? ' (Admin)' : ''}${delBtn}${pwBtn}</li>`;
+      }).join('') + '</ul>';
+      userList.querySelectorAll('button[data-del]').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.del)));
+      userList.querySelectorAll('button[data-pw]').forEach(b => b.addEventListener('click', () => resetPassword(b.dataset.pw)));
     } catch(e){
       userList.textContent = 'Fehler: ' + e.message;
     }
@@ -73,6 +79,33 @@ document.addEventListener('DOMContentLoaded', () => {
       err.textContent = 'Fehler: ' + e.message;
     }
   });
+
+  async function deleteUser(name){
+    if (!confirm(`User ${name} löschen?`)) return;
+    try {
+      await fetchJSON(`/api/users/${encodeURIComponent(name)}`, { method:'DELETE' });
+      loadUsers();
+    } catch(e){
+      alert('Fehler: ' + e.message);
+    }
+  }
+
+  async function resetPassword(name){
+    const p1 = prompt(`Neues Passwort für ${name}:`);
+    if (!p1) return;
+    const p2 = prompt('Passwort wiederholen:');
+    if (p1 !== p2){ alert('Passwörter stimmen nicht überein'); return; }
+    try {
+      await fetchJSON(`/api/users/${encodeURIComponent(name)}/password`, {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ password: p1 })
+      });
+      alert('Passwort gesetzt');
+    } catch(e){
+      alert('Fehler: ' + e.message);
+    }
+  }
 
   loadUsers();
 });
