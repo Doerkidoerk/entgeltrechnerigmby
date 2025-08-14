@@ -40,6 +40,28 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
+  const parseNumber = s => {
+    const n = s.replace(/\./g, "").replace(",", ".");
+    return n ? Number(n) : NaN;
+  };
+  function formatAtAmountInput(e){
+    const el = e.target;
+    let v = el.value.replace(/[^0-9,]/g, "");
+    const parts = v.split(",");
+    let int = parts[0] || "";
+    let dec = parts[1] || "";
+    if (dec.length > 2) dec = dec.slice(0, 2);
+    int = int ? parseInt(int, 10).toLocaleString("de-DE") : "";
+    el.value = dec ? `${int},${dec}` : int;
+  }
+  function finalizeAtAmount(e){
+    formatAtAmountInput(e);
+    const val = e.target.value;
+    if (!val) return;
+    const n = parseNumber(val);
+    e.target.value = n.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+
   // Theme toggle
   (function(){
     const saved = localStorage.getItem("theme") || "auto";
@@ -122,7 +144,14 @@ document.addEventListener("DOMContentLoaded", () => {
         recalc();
       });
 
-    [els.atAmount, els.atType, els.atHours].forEach(el => el && el.addEventListener("input", renderATComparison));
+    [els.atType, els.atHours].forEach(el => el && el.addEventListener("input", renderATComparison));
+    if (els.atAmount) {
+      els.atAmount.addEventListener("input", e => {
+        formatAtAmountInput(e);
+        renderATComparison();
+      });
+      els.atAmount.addEventListener("blur", finalizeAtAmount);
+    }
     els.atCompare.addEventListener("change", () => {
       if (els.atCompare.value === "ja") {
         els.atWrap.classList.remove("hidden");
@@ -320,7 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await calculate();
       return;
     }
-    const amount = Number(els.atAmount.value);
+    const amount = parseNumber(els.atAmount.value);
     if (!Number.isFinite(amount) || amount <= 0){
       els.atResult.classList.add("hidden");
       return;
