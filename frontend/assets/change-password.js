@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('pwChangeBtn');
   const err = document.getElementById('pwChangeError');
   const logoutBtn = document.getElementById('logoutBtn');
-  let token = localStorage.getItem('token') || '';
+  let token = sessionStorage.getItem('token') || '';
   if (!token) { window.location.href = '/'; return; }
 
   async function fetchJSON(url, opts = {}) {
@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (r.status === 401) {
       token = '';
-      localStorage.removeItem('token');
-      localStorage.removeItem('isAdmin');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('isAdmin');
       window.location.href = '/';
       throw new Error('Unauthorized');
     }
@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function logout(){
     try { await fetch('/api/logout', { method:'POST', headers:{ Authorization: `Bearer ${token}` } }); } catch {}
     token='';
-    localStorage.removeItem('token');
-    localStorage.removeItem('isAdmin');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('isAdmin');
     window.location.href = '/';
   }
 

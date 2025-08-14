@@ -5,8 +5,8 @@ const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
   const loginPanel = $("loginPanel"), loginUser = $("loginUser"), loginPass = $("loginPass"), loginBtn = $("loginBtn"), loginError = $("loginError"), appWrap = $("app");
-  let authToken = localStorage.getItem("token") || "";
-  let isAdmin = localStorage.getItem("isAdmin") === "1";
+  let authToken = sessionStorage.getItem("token") || "";
+  let isAdmin = sessionStorage.getItem("isAdmin") === "1";
     const els = {
       tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
       stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
@@ -85,8 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
       try { await fetch("/api/logout", { method: "POST", headers: { "Authorization": `Bearer ${authToken}` } }); } catch {}
     }
     authToken = "";
-    localStorage.removeItem("token");
-    localStorage.removeItem("isAdmin");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("isAdmin");
     els.adminLink.classList.add("hidden");
     loginPanel.classList.remove("hidden");
     appWrap.classList.add("hidden");
@@ -138,7 +138,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (ib !== -1) return 1;
           return a.localeCompare(b);
         });
-        els.tariffDate.innerHTML = keys.map(k=>`<option value="${k}">${formatTariffDate(k)}</option>`).join("");
+        els.tariffDate.textContent = '';
+        keys.forEach(k => {
+          const opt = document.createElement('option');
+          opt.value = k;
+          opt.textContent = formatTariffDate(k);
+          els.tariffDate.appendChild(opt);
+        });
         let def = "mai2024";
         const now = new Date();
         if (now >= new Date("2025-04-01") && now < new Date("2026-04-01")) def = "april2025";
@@ -212,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loginPanel.classList.remove("hidden");
       appWrap.classList.add("hidden");
       authToken = "";
-      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
     }
   }
 
@@ -229,8 +235,8 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ username: loginUser.value, password: loginPass.value })
       });
       authToken = res.token;
-      localStorage.setItem("token", authToken);
-      localStorage.setItem("isAdmin", res.isAdmin ? "1" : "0");
+      sessionStorage.setItem("token", authToken);
+      sessionStorage.setItem("isAdmin", res.isAdmin ? "1" : "0");
       isAdmin = res.isAdmin;
       if (res.mustChangePassword) {
         window.location.href = "/change-password.html";
@@ -265,7 +271,13 @@ document.addEventListener("DOMContentLoaded", () => {
       egs = egs.filter(k=>!/^AJ/.test(k));
       els.egLabel.textContent = "Entgeltgruppe";
     }
-    els.eg.innerHTML = egs.map(k=>`<option value="${k}">${k}</option>`).join("");
+    els.eg.textContent = '';
+    egs.forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = k;
+      els.eg.appendChild(opt);
+    });
     let egVal = prevEg && egs.includes(prevEg) ? prevEg : (egs.includes("EG05") ? "EG05" : egs[0]);
     els.eg.value = egVal;
     updateStufen(table);
@@ -286,11 +298,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const egObj = (table && table[egKey]) || {};
     const hasSalary = Object.prototype.hasOwnProperty.call(egObj, "salary");
     const isAzubi = /^AJ/.test(egKey);
-    if (hasSalary){ els.stufeWrap.classList.add("hidden"); els.stufe.innerHTML = ""; }
-    else {
+    if (hasSalary){
+      els.stufeWrap.classList.add("hidden");
+      els.stufe.textContent = '';
+    } else {
       els.stufeWrap.classList.remove("hidden");
       const stufen = Object.keys(egObj || {}).sort();
-      els.stufe.innerHTML = stufen.map(s=>`<option value="${s}">${s}</option>`).join("");
+      els.stufe.textContent = '';
+      stufen.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        els.stufe.appendChild(opt);
+      });
     }
     // Leistungszulage bei Ausbildungsvergütung deaktivieren
     if (isAzubi){
@@ -383,7 +403,10 @@ document.addEventListener("DOMContentLoaded", () => {
       renderATComparison();
       setStatus("OK","ok");
     }catch(e){
-      els.result.innerHTML = `<div class="alert">Fehler: ${e.message}</div>`;
+      const div = document.createElement('div');
+      div.className = 'alert';
+      div.textContent = 'Fehler: ' + e.message;
+      els.result.replaceChildren(div);
       setStatus("Fehler","err");
     }
   }
@@ -392,29 +415,66 @@ document.addEventListener("DOMContentLoaded", () => {
     const b = d.breakdown, t = d.totals;
     const bonusTxt = b.bonus !== undefined ? ` · Bonus: ${fmtEUR.format(b.bonus)}` : "";
     const kinderTxt = b.kinderzulage ? ` · Zulage: ${fmtEUR.format(b.kinderzulage)}` : "";
-    els.result.innerHTML = `
-      <div class="subgrid">
-        <div class="tile"><h3>Monat</h3><div class="big">${fmtEUR.format(t.monat)}</div>
-          <div class="micro muted">Grund: ${fmtEUR.format(b.grund)}${bonusTxt}${kinderTxt}</div></div>
-        <div class="tile"><h3>Jahr</h3><div class="big">${fmtEUR.format(t.jahr)}</div>
-          <div class="micro muted">Ø Monat: ${fmtEUR.format(t.durchschnittMonat)}</div></div>
-        <div class="tile">
-          <h3>Zusatz­zahlungen</h3>
-          <ul class="list">
-            <li>13. Monat (${b.p13} %): <strong>${fmtEUR.format(b.mon13)}</strong></li>
-            <li>T-Geld (18,4 %): <strong>${fmtEUR.format(b.tGeld)}</strong></li>
-            <li>T-ZUG A (27,5 %): <strong>${fmtEUR.format(b.tZugA)}</strong></li>
-            <li>T-ZUG B: <strong>${fmtEUR.format(b.tZugB)}</strong></li>
-          </ul>
-        </div>
-        <div class="tile">
-          <h3>Urlaub</h3>
-          <ul class="list">
-            <li>Entgelt/Tag: <strong>${fmtEUR.format(b.urlaub.entgeltProTag)}</strong></li>
-            <li>Gesamt (${b.urlaub.tage} Tage): <strong>${fmtEUR.format(b.urlaub.gesamt)}</strong></li>
-          </ul>
-        </div>
-      </div>`;
+    els.result.textContent = '';
+    const subgrid = document.createElement('div');
+    subgrid.className = 'subgrid';
+
+    const monatTile = document.createElement('div');
+    monatTile.className = 'tile';
+    const hMonat = document.createElement('h3'); hMonat.textContent = 'Monat';
+    const bigMonat = document.createElement('div'); bigMonat.className = 'big'; bigMonat.textContent = fmtEUR.format(t.monat);
+    const microMonat = document.createElement('div'); microMonat.className = 'micro muted';
+    microMonat.textContent = `Grund: ${fmtEUR.format(b.grund)}${bonusTxt}${kinderTxt}`;
+    monatTile.append(hMonat, bigMonat, microMonat);
+
+    const jahrTile = document.createElement('div');
+    jahrTile.className = 'tile';
+    const hJahr = document.createElement('h3'); hJahr.textContent = 'Jahr';
+    const bigJahr = document.createElement('div'); bigJahr.className = 'big'; bigJahr.textContent = fmtEUR.format(t.jahr);
+    const microJahr = document.createElement('div'); microJahr.className = 'micro muted';
+    microJahr.textContent = `Ø Monat: ${fmtEUR.format(t.durchschnittMonat)}`;
+    jahrTile.append(hJahr, bigJahr, microJahr);
+
+    const zusatzTile = document.createElement('div');
+    zusatzTile.className = 'tile';
+    const hZus = document.createElement('h3'); hZus.textContent = 'Zusatz­zahlungen';
+    const ulZus = document.createElement('ul'); ulZus.className = 'list';
+    const items = [
+      `13. Monat (${b.p13} %): ${fmtEUR.format(b.mon13)}`,
+      `T-Geld (18,4 %): ${fmtEUR.format(b.tGeld)}`,
+      `T-ZUG A (27,5 %): ${fmtEUR.format(b.tZugA)}`,
+      `T-ZUG B: ${fmtEUR.format(b.tZugB)}`
+    ];
+    items.forEach(txt => {
+      const li = document.createElement('li');
+      const strong = document.createElement('strong');
+      const parts = txt.split(': ');
+      li.textContent = parts[0] + ': ';
+      strong.textContent = parts[1];
+      li.appendChild(strong);
+      ulZus.appendChild(li);
+    });
+    zusatzTile.append(hZus, ulZus);
+
+    const urlaubTile = document.createElement('div');
+    urlaubTile.className = 'tile';
+    const hUrlaub = document.createElement('h3'); hUrlaub.textContent = 'Urlaub';
+    const ulUrlaub = document.createElement('ul'); ulUrlaub.className = 'list';
+    const liTag = document.createElement('li');
+    liTag.textContent = 'Entgelt/Tag: ';
+    const strongTag = document.createElement('strong');
+    strongTag.textContent = fmtEUR.format(b.urlaub.entgeltProTag);
+    liTag.appendChild(strongTag);
+    const liGes = document.createElement('li');
+    liGes.textContent = `Gesamt (${b.urlaub.tage} Tage): `;
+    const strongGes = document.createElement('strong');
+    strongGes.textContent = fmtEUR.format(b.urlaub.gesamt);
+    liGes.appendChild(strongGes);
+    ulUrlaub.append(liTag, liGes);
+    urlaubTile.append(hUrlaub, ulUrlaub);
+
+    subgrid.append(monatTile, jahrTile, zusatzTile, urlaubTile);
+    els.result.appendChild(subgrid);
   }
 
   async function renderATComparison(){
@@ -440,42 +500,74 @@ document.addEventListener("DOMContentLoaded", () => {
       els.atResult.classList.add("hidden");
       return;
     }
-    const diffIcon = n => `<span class="icon">${n >= 0 ? "▲" : "▼"}</span>`;
+    const diffIcon = n => {
+      const span = document.createElement('span');
+      span.className = 'icon';
+      span.textContent = n >= 0 ? '▲' : '▼';
+      return span;
+    };
     const diffVal = n => fmtEUR.format(Math.abs(n));
     const minOk = isMon ? monat >= min.monat : jahr >= min.jahr;
     const dMonat = monat - lastTotals.monat;
     const dJahr = jahr - lastTotals.jahr;
-    els.atResult.innerHTML = `
-      <div class="tile">
-        <h3>AT-Vergleich</h3>
-        <ul class="list">
-          <li>AT-Angebot (${basis} h):
-            <span class="muted">Monat:</span> <strong>${fmtEUR.format(monat)}</strong>
-            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(jahr)}</strong>
-          </li>
-          <li>AT-Mindestentgelt (${basis} h):
-            <span class="muted">${isMon ? "Monat" : "Jahr"}:</span>
-            <strong>${fmtEUR.format(isMon ? min.monat : min.jahr)}</strong>
-          </li>
-          <li>
-            ${minOk
-              ? `<span class="icon pos">▲</span> Angebot über Mindestentgelt (${isMon ? "Monat" : "Jahr"})`
-              : `<span class="icon neg">▼</span> Angebot unter Mindestentgelt (${isMon ? "Monat" : "Jahr"})`}
-          </li>
-          <li>Tarif:
-            <span class="muted">Monat:</span> <strong>${fmtEUR.format(lastTotals.monat)}</strong>
-            <span class="muted">Jahr:</span> <strong>${fmtEUR.format(lastTotals.jahr)}</strong>
-          </li>
-          <li>Δ zum Tarif:
-            <span class="muted">Monat:</span>
-            <span class="${dMonat>=0?"pos":"neg"}">${diffIcon(dMonat)} ${diffVal(dMonat)}</span>
-            <span class="muted">Jahr:</span>
-            <span class="${dJahr>=0?"pos":"neg"}">${diffIcon(dJahr)} ${diffVal(dJahr)}</span>
-          </li>
-        </ul>
-        <p class="hint small">Hinweis: AT-Angestellte haben keinen Anspruch auf tarifliche Leistungen (z. B. T-ZUG-Tage, besonderer Kündigungsschutz).</p>
-      </div>`;
-    els.atResult.classList.remove("hidden");
+    els.atResult.textContent = '';
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    const h3 = document.createElement('h3'); h3.textContent = 'AT-Vergleich'; tile.appendChild(h3);
+    const ul = document.createElement('ul'); ul.className = 'list';
+
+    const li1 = document.createElement('li');
+    li1.textContent = `AT-Angebot (${basis} h): `;
+    const mSpan = document.createElement('span'); mSpan.className = 'muted'; mSpan.textContent = 'Monat:'; li1.appendChild(mSpan);
+    const mStrong = document.createElement('strong'); mStrong.textContent = fmtEUR.format(monat); li1.append(' ', mStrong);
+    const jSpan = document.createElement('span'); jSpan.className = 'muted'; jSpan.textContent = 'Jahr:'; li1.append(' ', jSpan);
+    const jStrong = document.createElement('strong'); jStrong.textContent = fmtEUR.format(jahr); li1.append(' ', jStrong);
+    ul.appendChild(li1);
+
+    const li2 = document.createElement('li');
+    li2.textContent = `AT-Mindestentgelt (${basis} h): `;
+    const minSpan = document.createElement('span');
+    minSpan.className = 'muted';
+    minSpan.textContent = isMon ? 'Monat:' : 'Jahr:';
+    li2.appendChild(minSpan);
+    const minStrong = document.createElement('strong');
+    minStrong.textContent = fmtEUR.format(isMon ? min.monat : min.jahr);
+    li2.append(' ', minStrong);
+    ul.appendChild(li2);
+
+    const li3 = document.createElement('li');
+    const icon = diffIcon(minOk ? 1 : -1); icon.classList.add(minOk ? 'pos' : 'neg');
+    li3.appendChild(icon);
+    li3.append(` Angebot ${minOk ? 'über' : 'unter'} Mindestentgelt (${isMon ? 'Monat' : 'Jahr'})`);
+    ul.appendChild(li3);
+
+    const li4 = document.createElement('li');
+    li4.textContent = 'Tarif: ';
+    const tMon = document.createElement('span'); tMon.className = 'muted'; tMon.textContent = 'Monat:'; li4.appendChild(tMon);
+    const tMonVal = document.createElement('strong'); tMonVal.textContent = fmtEUR.format(lastTotals.monat); li4.append(' ', tMonVal);
+    const tJ = document.createElement('span'); tJ.className = 'muted'; tJ.textContent = 'Jahr:'; li4.append(' ', tJ);
+    const tJVal = document.createElement('strong'); tJVal.textContent = fmtEUR.format(lastTotals.jahr); li4.append(' ', tJVal);
+    ul.appendChild(li4);
+
+    const li5 = document.createElement('li');
+    li5.textContent = 'Δ zum Tarif: ';
+    const dMonSpan = document.createElement('span'); dMonSpan.className = 'muted'; dMonSpan.textContent = 'Monat:'; li5.appendChild(dMonSpan);
+    const dMonVal = document.createElement('span'); dMonVal.className = dMonat>=0 ? 'pos' : 'neg';
+    dMonVal.appendChild(diffIcon(dMonat)); dMonVal.append(' ' + diffVal(dMonat));
+    li5.append(' ', dMonVal);
+    const dJSpan = document.createElement('span'); dJSpan.className = 'muted'; dJSpan.textContent = 'Jahr:'; li5.append(' ', dJSpan);
+    const dJVal = document.createElement('span'); dJVal.className = dJahr>=0 ? 'pos' : 'neg';
+    dJVal.appendChild(diffIcon(dJahr)); dJVal.append(' ' + diffVal(dJahr));
+    li5.append(' ', dJVal);
+    ul.appendChild(li5);
+
+    tile.appendChild(ul);
+    const p = document.createElement('p');
+    p.className = 'hint small';
+    p.textContent = 'Hinweis: AT-Angestellte haben keinen Anspruch auf tarifliche Leistungen (z. B. T-ZUG-Tage, besonderer Kündigungsschutz).';
+    tile.appendChild(p);
+    els.atResult.appendChild(tile);
+    els.atResult.classList.remove('hidden');
   }
 
   // Snapshot

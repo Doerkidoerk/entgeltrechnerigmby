@@ -17,14 +17,12 @@ describe('POST /api/calc', () => {
     betriebsMonate: 24,
   };
 
-  let token;
   beforeAll(async () => {
     await new Promise(res => setTimeout(res, 100));
-    const login = await loginAs();
-    token = login.body.token;
   });
 
   test('tZugBPeriod until2025', async () => {
+    const token = (await loginAs()).body.token;
     const res = await request(app)
       .post('/api/calc')
       .set('Authorization', `Bearer ${token}`)
@@ -36,6 +34,7 @@ describe('POST /api/calc', () => {
   });
 
   test('tZugBPeriod from2026', async () => {
+    const token = (await loginAs()).body.token;
     const res = await request(app)
       .post('/api/calc')
       .set('Authorization', `Bearer ${token}`)
@@ -47,13 +46,15 @@ describe('POST /api/calc', () => {
   });
 
   test('urlaubsgeld reflects provided days', async () => {
+    const token30 = (await loginAs()).body.token;
     const res30 = await request(app)
       .post('/api/calc')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Authorization', `Bearer ${token30}`)
       .send({ ...payload, urlaubstage: 30, tZugBPeriod: 'until2025' });
+    const token20 = (await loginAs()).body.token;
     const res20 = await request(app)
       .post('/api/calc')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Authorization', `Bearer ${token20}`)
       .send({ ...payload, urlaubstage: 20, tZugBPeriod: 'until2025' });
 
     expect(res20.status).toBe(200);
@@ -62,6 +63,7 @@ describe('POST /api/calc', () => {
   });
 
   test('Azubis erhalten Kinderzulage und T-ZUG B basiert auf Ausbildungsvergütung', async () => {
+    const token = (await loginAs()).body.token;
     const res = await request(app)
       .post('/api/calc')
       .set('Authorization', `Bearer ${token}`)
@@ -131,12 +133,13 @@ describe('admin user management', () => {
   test('newly created users need not change password', async () => {
     const loginAdmin = await loginAs();
     const token = loginAdmin.body.token;
+    await request(app).delete('/api/users/alice').set('Authorization', `Bearer ${token}`).catch(()=>{});
     const res = await https(request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${token}`))
-      .send({ username: 'alice', password: 'pass1234' });
+      .send({ username: 'alice', password: 'Pass1234!' });
     expect(res.status).toBe(200);
-    const loginUser = await loginAs('alice', 'pass1234');
+    const loginUser = await loginAs('alice', 'Pass1234!');
     expect(loginUser.status).toBe(200);
     expect(loginUser.body.mustChangePassword).toBe(false);
   });
@@ -146,16 +149,16 @@ describe('admin user management', () => {
     await https(request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${admin1.body.token}`))
-      .send({ username: 'bob', password: 'oldpass123' });
+      .send({ username: 'bob', password: 'Oldpass123!' });
     const admin2 = await loginAs();
     const reset = await https(request(app)
       .put('/api/users/bob/password')
       .set('Authorization', `Bearer ${admin2.body.token}`))
-      .send({ password: 'newpass123' });
+      .send({ password: 'Newpass123!' });
     expect(reset.status).toBe(200);
-    const oldLogin = await loginAs('bob', 'oldpass123');
+    const oldLogin = await loginAs('bob', 'Oldpass123!');
     expect(oldLogin.status).toBe(401);
-    const newLogin = await loginAs('bob', 'newpass123');
+    const newLogin = await loginAs('bob', 'Newpass123!');
     expect(newLogin.status).toBe(200);
     expect(newLogin.body.mustChangePassword).toBe(false);
   });
@@ -165,7 +168,7 @@ describe('admin user management', () => {
     await https(request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${admin1.body.token}`))
-      .send({ username: 'charlie', password: 'pass1234' });
+      .send({ username: 'charlie', password: 'Pass1234!' });
     const admin2 = await loginAs();
     const del = await request(app)
       .delete('/api/users/charlie')
@@ -189,19 +192,19 @@ describe('invitation registration', () => {
     const code = gen.body.code;
     expect(code).toMatch(/^[A-Z0-9]{6}$/);
     const reg = await https(request(app).post('/api/register'))
-      .send({ username: 'dave', password: 'pass1234', code });
+      .send({ username: 'dave', password: 'Pass1234!', code });
     expect(reg.status).toBe(200);
-    const loginDave = await loginAs('dave', 'pass1234');
+    const loginDave = await loginAs('dave', 'Pass1234!');
     expect(loginDave.status).toBe(200);
     const reuse = await https(request(app).post('/api/register'))
-      .send({ username: 'eve', password: 'pass1234', code });
+      .send({ username: 'eve', password: 'Pass1234!', code });
     expect(reuse.status).toBe(400);
     const admin2 = await loginAs();
     await request(app)
       .delete('/api/users/dave')
       .set('Authorization', `Bearer ${admin2.body.token}`);
     const reuse2 = await https(request(app).post('/api/register'))
-      .send({ username: 'frank', password: 'pass1234', code });
+      .send({ username: 'frank', password: 'Pass1234!', code });
     expect(reuse2.status).toBe(400);
   });
 });
@@ -209,19 +212,20 @@ describe('invitation registration', () => {
 describe('user password change', () => {
   test('user can change own password', async () => {
     const admin = await loginAs();
+    await request(app).delete('/api/users/self').set('Authorization', `Bearer ${admin.body.token}`).catch(()=>{});
     await https(request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${admin.body.token}`))
-      .send({ username: 'self', password: 'pass1234' });
-    const loginSelf = await loginAs('self', 'pass1234');
+      .send({ username: 'self', password: 'Pass1234!' });
+    const loginSelf = await loginAs('self', 'Pass1234!');
     const change = await https(request(app)
       .post('/api/change-password')
       .set('Authorization', `Bearer ${loginSelf.body.token}`))
-      .send({ oldPassword: 'pass1234', newPassword: 'newpass123' });
+      .send({ oldPassword: 'Pass1234!', newPassword: 'Newpass123!' });
     expect(change.status).toBe(200);
-    const failOld = await loginAs('self', 'pass1234');
+    const failOld = await loginAs('self', 'Pass1234!');
     expect(failOld.status).toBe(401);
-    const okNew = await loginAs('self', 'newpass123');
+    const okNew = await loginAs('self', 'Newpass123!');
     expect(okNew.status).toBe(200);
   });
 });
