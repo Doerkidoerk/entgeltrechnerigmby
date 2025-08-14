@@ -311,13 +311,13 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>`;
   }
 
-  function renderATComparison(){
+  async function renderATComparison(){
     if (els.atCompare.value !== "ja"){
       els.atResult.classList.add("hidden");
       return;
     }
     if (!lastTotals){
-      calculate();
+      await calculate();
       return;
     }
     const amount = Number(els.atAmount.value);
