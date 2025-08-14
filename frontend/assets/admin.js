@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const inviteList = document.getElementById('inviteList');
   const genInviteBtn = document.getElementById('genInviteBtn');
   const logoutBtn = document.getElementById('logoutBtn');
-  let token = localStorage.getItem('token') || '';
-  const isAdmin = localStorage.getItem('isAdmin') === '1';
+  let token = sessionStorage.getItem('token') || '';
+  const isAdmin = sessionStorage.getItem('isAdmin') === '1';
   if (!token || !isAdmin) { window.location.href = '/'; return; }
 
   async function fetchJSON(url, opts = {}) {
@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (r.status === 401) {
       token = '';
-      localStorage.removeItem('token');
-      localStorage.removeItem('isAdmin');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('isAdmin');
       window.location.href = '/';
       throw new Error('Unauthorized');
     }
@@ -39,8 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function logout(){
     try { await fetch('/api/logout', { method:'POST', headers:{ Authorization: `Bearer ${token}` } }); } catch {}
     token='';
-    localStorage.removeItem('token');
-    localStorage.removeItem('isAdmin');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('isAdmin');
     window.location.href = '/';
   }
 
@@ -49,13 +49,26 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadUsers(){
     try {
       const res = await fetchJSON('/api/users');
-      userList.innerHTML = '<ul>' + res.users.map(u => {
-        const delBtn = u.username !== 'admin' ? ` <button type="button" data-del="${u.username}">Löschen</button>` : '';
-        const pwBtn = u.username !== 'admin' ? ` <button type="button" data-pw="${u.username}">Passwort setzen</button>` : '';
-        return `<li>${u.username}${u.isAdmin ? ' (Admin)' : ''}${delBtn}${pwBtn}</li>`;
-      }).join('') + '</ul>';
-      userList.querySelectorAll('button[data-del]').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.del)));
-      userList.querySelectorAll('button[data-pw]').forEach(b => b.addEventListener('click', () => resetPassword(b.dataset.pw)));
+      userList.textContent = '';
+      const ul = document.createElement('ul');
+      res.users.forEach(u => {
+        const li = document.createElement('li');
+        li.textContent = u.username + (u.isAdmin ? ' (Admin)' : '');
+        if (u.username !== 'admin') {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.textContent = 'Löschen';
+          delBtn.addEventListener('click', () => deleteUser(u.username));
+          li.appendChild(delBtn);
+          const pwBtn = document.createElement('button');
+          pwBtn.type = 'button';
+          pwBtn.textContent = 'Passwort setzen';
+          pwBtn.addEventListener('click', () => resetPassword(u.username));
+          li.appendChild(pwBtn);
+        }
+        ul.appendChild(li);
+      });
+      userList.appendChild(ul);
     } catch(e){
       userList.textContent = 'Fehler: ' + e.message;
     }
@@ -99,10 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadInvites(){
     try {
       const res = await fetchJSON('/api/invites');
-      inviteList.innerHTML = '<ul>' + Object.entries(res.invites).map(([c,i]) => {
+      inviteList.textContent = '';
+      const ul = document.createElement('ul');
+      Object.entries(res.invites).forEach(([c, i]) => {
+        const li = document.createElement('li');
         const state = i.used ? (i.user ? `verwendet von ${i.user}` : 'verwendet') : 'frei';
-        return `<li>${c}: ${state}</li>`;
-      }).join('') + '</ul>';
+        li.textContent = `${c}: ${state}`;
+        ul.appendChild(li);
+      });
+      inviteList.appendChild(ul);
     } catch(e){
       inviteList.textContent = 'Fehler: ' + e.message;
     }

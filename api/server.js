@@ -10,6 +10,7 @@ const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const crypto = require("crypto");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -67,14 +68,24 @@ function createToken(){
 }
 
 function isStrongPassword(p){
-  return typeof p === "string" && p.length >= 8;
+  return typeof p === "string" &&
+    p.length >= 8 &&
+    /[A-Z]/.test(p) &&
+    /[a-z]/.test(p) &&
+    /[0-9]/.test(p) &&
+    /[^A-Za-z0-9]/.test(p);
+}
+
+function isValidUsername(name){
+  return typeof name === "string" && /^[a-zA-Z0-9_-]{3,32}$/.test(name);
 }
 
 function createInviteCode(){
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code;
   do {
-    code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const buf = crypto.randomBytes(6);
+    code = Array.from(buf, b => chars[b % chars.length]).join("");
   } while (invites[code]);
   invites[code] = { used: false, user: null };
   saveInvites();
@@ -82,8 +93,12 @@ function createInviteCode(){
 }
 
 app.disable("x-powered-by");
-app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "same-site" } }));
-app.use(cors({ origin: ["https://entgeltrechner.cbmeyer.xyz"], methods: ["GET","POST"] }));
+app.set("trust proxy", 1);
+app.use(helmet({
+  contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } },
+  crossOriginResourcePolicy: { policy: "same-site" }
+}));
+app.use(cors({ origin: ["https://entgeltrechner.cbmeyer.xyz"], methods: ["GET","POST","PUT","DELETE"] }));
 app.use(express.json({ limit: "256kb" }));
 app.use(morgan("combined"));
 
@@ -108,8 +123,7 @@ function requireAdmin(req, res, next) {
 
 function ensureHttps(req, res, next) {
   if (process.env.NODE_ENV === "test") return next();
-  const proto = req.headers["x-forwarded-proto"] || req.protocol;
-  if (proto === "https") return next();
+  if (req.secure) return next();
   res.status(400).json({ error: "HTTPS required" });
 }
 
@@ -173,6 +187,14 @@ if (process.env.NODE_ENV !== "test") {
 
 loadUsers();
 loadInvites();
+
+function cleanupSessions(){
+  const now = Date.now();
+  for (const [t, s] of Object.entries(sessions)) {
+    if (s.expires < now) delete sessions[t];
+  }
+}
+setInterval(cleanupSessions, 60 * 1000).unref();
 
 /** Hilfsfunktionen */
 const euro = n => Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
@@ -282,9 +304,12 @@ const CalcSchema = z.object({
   eigeneKinder: z.boolean().optional().default(false)
 });
 
-app.post("/api/register", ensureHttps, (req, res) => {
+const authLimiter = rateLimit({ windowMs: 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false });
+
+app.post("/api/register", ensureHttps, authLimiter, (req, res) => {
   const { username, password, code } = req.body || {};
   if (!username || !password || !code) return res.status(400).json({ error: "Missing fields" });
+  if (!isValidUsername(username)) return res.status(400).json({ error: "Invalid username" });
   if (users[username]) return res.status(400).json({ error: "User exists" });
   if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
   const inv = invites[code];
@@ -298,8 +323,9 @@ app.post("/api/register", ensureHttps, (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/login", ensureHttps, (req, res) => {
+app.post("/api/login", ensureHttps, authLimiter, (req, res) => {
   const { username, password } = req.body || {};
+  if (!isValidUsername(username)) return res.status(400).json({ error: "Invalid username" });
   const user = users[username];
   if (!user || !verifyPassword(user, password)) {
     return res.status(401).json({ error: "Invalid credentials" });
@@ -341,6 +367,7 @@ app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
 app.post("/api/users", ensureHttps, authMiddleware, requireAdmin, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: "Missing fields" });
+  if (!isValidUsername(username)) return res.status(400).json({ error: "Invalid username" });
   if (users[username]) return res.status(400).json({ error: "User exists" });
   if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
   const salt = crypto.randomBytes(16).toString("hex");
@@ -352,6 +379,7 @@ app.post("/api/users", ensureHttps, authMiddleware, requireAdmin, (req, res) => 
 
 app.put("/api/users/:username/password", ensureHttps, authMiddleware, requireAdmin, (req, res) => {
   const name = req.params.username;
+  if (!isValidUsername(name)) return res.status(400).json({ error: "Invalid username" });
   const { password } = req.body || {};
   if (!users[name]) return res.status(404).json({ error: "User not found" });
   if (!password) return res.status(400).json({ error: "Missing password" });
@@ -368,6 +396,7 @@ app.put("/api/users/:username/password", ensureHttps, authMiddleware, requireAdm
 
 app.delete("/api/users/:username", authMiddleware, requireAdmin, (req, res) => {
   const name = req.params.username;
+  if (!isValidUsername(name)) return res.status(400).json({ error: "Invalid username" });
   if (name === "admin") return res.status(400).json({ error: "Cannot delete admin" });
   if (!users[name]) return res.status(404).json({ error: "User not found" });
   delete users[name];
