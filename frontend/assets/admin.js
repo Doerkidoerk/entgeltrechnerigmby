@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetchJSON('/api/users');
       userList.innerHTML = '<ul>' + res.users.map(u => {
-        const delBtn = u.username !== 'admin' ? ` <button data-del="${u.username}">Löschen</button>` : '';
-        const pwBtn = u.username !== 'admin' ? ` <button data-pw="${u.username}">Passwort setzen</button>` : '';
+        const delBtn = u.username !== 'admin' ? ` <button type="button" data-del="${u.username}">Löschen</button>` : '';
+        const pwBtn = u.username !== 'admin' ? ` <button type="button" data-pw="${u.username}">Passwort setzen</button>` : '';
         return `<li>${u.username}${u.isAdmin ? ' (Admin)' : ''}${delBtn}${pwBtn}</li>`;
       }).join('') + '</ul>';
       userList.querySelectorAll('button[data-del]').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.del)));
