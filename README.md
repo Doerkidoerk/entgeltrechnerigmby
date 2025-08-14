@@ -1,6 +1,6 @@
 # Entgeltrechner
 
-Version 1.6 – Kinderzulage und T-ZUG-Berechnung für Auszubildende.
+Version 1.7 – einfache Nutzerverwaltung mit Admin-Account.
 
 Eine kleine Webanwendung zur Berechnung des Entgelts nach der IG Metall Tariftabelle für die bayerische Metall- und Elektroindustrie. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die verschiedenen Entgeltsbestandteile übersichtlich dar.
 
@@ -8,6 +8,10 @@ WebApp mit zwei Komponenten:
 
 - **API** (`api/`): Node.js/Express-Server für die Entgeltberechnung.
 - **Frontend** (`frontend/`): statische HTML/CSS/JS-Anwendung, die die API nutzt.
+
+## Benutzerverwaltung
+
+Standardmäßig existiert der Benutzer `admin` mit dem Passwort `admin`. Nach dem ersten Login wird eine Passwortänderung verlangt. Passwörter müssen mindestens 8 Zeichen lang sein. Sitzungen laufen nach einer Stunde automatisch ab. Nur angemeldete Benutzer können den Entgeltrechner verwenden. Neue Benutzer können im Admin-Bereich angelegt werden.
 
 ## Voraussetzungen
 

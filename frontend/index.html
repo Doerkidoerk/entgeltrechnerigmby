@@ -11,7 +11,14 @@
   <noscript>
     <div class="noscript">Dieser Rechner benötigt JavaScript.</div>
   </noscript>
-
+  <div id="loginPanel" class="card">
+    <h2>Login</h2>
+    <div class="field"><label for="loginUser">Benutzer</label><input id="loginUser" type="text" /></div>
+    <div class="field"><label for="loginPass">Passwort</label><input id="loginPass" type="password" /></div>
+    <div class="actions"><button id="loginBtn" class="btn" type="button">Login</button></div>
+    <div id="loginError" class="muted small"></div>
+  </div>
+  <div id="app" class="hidden">
   <header class="site-header">
     <div class="container header-bar">
       <div class="brand">
@@ -200,5 +207,6 @@
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
 </body>
 </html>

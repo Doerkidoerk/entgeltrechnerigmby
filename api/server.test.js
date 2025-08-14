@@ -1,3 +1,4 @@
+process.env.SESSION_TTL_MS = '100';
 const request = require('supertest');
 const app = require('./server');
 
@@ -12,14 +13,19 @@ describe('POST /api/calc', () => {
     betriebsMonate: 24,
   };
 
+  let token;
   beforeAll(async () => {
-    // wait for tables to load
     await new Promise(res => setTimeout(res, 100));
+    const login = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    token = login.body.token;
   });
 
   test('tZugBPeriod until2025', async () => {
     const res = await request(app)
       .post('/api/calc')
+      .set('Authorization', `Bearer ${token}`)
       .send({ ...payload, tZugBPeriod: 'until2025' });
 
     expect(res.status).toBe(200);
@@ -30,6 +36,7 @@ describe('POST /api/calc', () => {
   test('tZugBPeriod from2026', async () => {
     const res = await request(app)
       .post('/api/calc')
+      .set('Authorization', `Bearer ${token}`)
       .send({ ...payload, tZugBPeriod: 'from2026' });
 
     expect(res.status).toBe(200);
@@ -40,9 +47,11 @@ describe('POST /api/calc', () => {
   test('urlaubsgeld reflects provided days', async () => {
     const res30 = await request(app)
       .post('/api/calc')
+      .set('Authorization', `Bearer ${token}`)
       .send({ ...payload, urlaubstage: 30, tZugBPeriod: 'until2025' });
     const res20 = await request(app)
       .post('/api/calc')
+      .set('Authorization', `Bearer ${token}`)
       .send({ ...payload, urlaubstage: 20, tZugBPeriod: 'until2025' });
 
     expect(res20.status).toBe(200);
@@ -53,6 +62,7 @@ describe('POST /api/calc', () => {
   test('Azubis erhalten Kinderzulage und T-ZUG B basiert auf Ausbildungsvergütung', async () => {
     const res = await request(app)
       .post('/api/calc')
+      .set('Authorization', `Bearer ${token}`)
       .send({
         tariffDate: 'april2025',
         eg: 'AJ1',
@@ -67,5 +77,30 @@ describe('POST /api/calc', () => {
     expect(res.status).toBe(200);
     expect(res.body.breakdown.kinderzulage).toBeCloseTo(632, 2);
     expect(res.body.breakdown.tZugB).toBeCloseTo(233.84, 2);
+  });
+});
+
+describe('security features', () => {
+  test('rejects weak passwords on user creation', async () => {
+    const login = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const res = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${login.body.token}`)
+      .send({ username: 'u1', password: '123' });
+    expect(res.status).toBe(400);
+  });
+
+  test('sessions expire after ttl', async () => {
+    const login = await request(app)
+      .post('/api/login')
+      .send({ username: 'admin', password: 'admin' });
+    const token = login.body.token;
+    await new Promise(r => setTimeout(r, 200));
+    const res = await request(app)
+      .get('/api/tables')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(401);
   });
 });
