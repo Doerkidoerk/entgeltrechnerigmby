@@ -1,9 +1,12 @@
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.11";
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
+  const loginPanel = $("loginPanel"), loginUser = $("loginUser"), loginPass = $("loginPass"), loginBtn = $("loginBtn"), loginError = $("loginError"), appWrap = $("app");
+  let authToken = localStorage.getItem("token") || "";
+  let isAdmin = localStorage.getItem("isAdmin") === "1";
     const els = {
       tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
       stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
@@ -20,10 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
       cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
       atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
       atResult: $("atCompareResult"),
-      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
+      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion"),
+      logoutBtn: $("logoutBtn"), adminLink: $("adminLink"), pwLink: $("pwChangeLink")
     };
 
   els.version.textContent = APP_VERSION;
+  els.logoutBtn.addEventListener("click", logout);
 
     const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
     const fmtPct = n => Number(n).toFixed(2) + " %";
@@ -75,10 +80,37 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   })();
 
+  async function logout(){
+    if (authToken) {
+      try { await fetch("/api/logout", { method: "POST", headers: { "Authorization": `Bearer ${authToken}` } }); } catch {}
+    }
+    authToken = "";
+    localStorage.removeItem("token");
+    localStorage.removeItem("isAdmin");
+    els.adminLink.classList.add("hidden");
+    loginPanel.classList.remove("hidden");
+    appWrap.classList.add("hidden");
+  }
+
   // API
-  async function fetchJSON(url) {
-    const r = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  async function fetchJSON(url, opts = {}) {
+    const r = await fetch(url, {
+      ...opts,
+      headers: {
+        "Accept": "application/json",
+        ...(opts.headers || {}),
+        ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
+      }
+    });
+    if (r.status === 401) {
+      logout();
+      throw new Error("Unauthorized");
+    }
+    if (!r.ok) {
+      let msg = `${r.status} ${r.statusText}`;
+      try { const e = await r.json(); msg = e.error || msg; } catch {}
+      throw new Error(msg);
+    }
     return r.json();
   }
 
@@ -92,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Init
-  (async function init(){
+  async function init(){
     try { await fetchJSON("/api/health"); setStatus("API OK","ok"); }
     catch { setStatus("API down","err"); }
 
@@ -168,7 +200,54 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // First calc
     calculate();
-  })();
+  }
+
+  async function startApp(){
+    loginPanel.classList.add("hidden");
+    appWrap.classList.remove("hidden");
+    if (isAdmin) els.adminLink.classList.remove("hidden");
+    try {
+      await init();
+    } catch {
+      loginPanel.classList.remove("hidden");
+      appWrap.classList.add("hidden");
+      authToken = "";
+      localStorage.removeItem("token");
+    }
+  }
+
+  async function handleLogin(){
+    loginError.textContent = "";
+    if (location.protocol !== 'https:') {
+      loginError.textContent = 'HTTPS erforderlich';
+      return;
+    }
+    try {
+      const res = await fetchJSON("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUser.value, password: loginPass.value })
+      });
+      authToken = res.token;
+      localStorage.setItem("token", authToken);
+      localStorage.setItem("isAdmin", res.isAdmin ? "1" : "0");
+      isAdmin = res.isAdmin;
+      if (res.mustChangePassword) {
+        window.location.href = "/change-password.html";
+        return;
+      }
+      await startApp();
+    } catch(e) {
+      loginError.textContent = "Login fehlgeschlagen";
+    }
+  }
+
+  if (authToken) {
+    startApp();
+  } else {
+    loginPanel.classList.remove("hidden");
+  }
+  loginBtn.addEventListener("click", handleLogin);
 
     async function loadEGs() {
       if (!els.tariffDate.value) return;
@@ -298,9 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     setStatus("Berechne…","muted");
     try{
-      const r = await fetch("/api/calc",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
-      if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.error || `HTTP ${r.status}`); }
-      const data = await r.json();
+      const data = await fetchJSON("/api/calc",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
       renderResult(data); maybeCompare(data);
       lastTotals = data.totals;
       renderATComparison();
