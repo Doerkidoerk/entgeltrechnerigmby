@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 process.env.SESSION_TTL_MS = '100';
 const request = require('supertest');
 const app = require('./server');

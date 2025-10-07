@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const userList = document.getElementById('userList');
   const newUserName = document.getElementById('newUserName');
   const newUserPass = document.getElementById('newUserPass');
@@ -9,17 +9,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const genInviteBtn = document.getElementById('genInviteBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   let token = localStorage.getItem('token') || '';
+  let csrfToken = '';
   const isAdmin = localStorage.getItem('isAdmin') === '1';
   if (!token || !isAdmin) { window.location.href = '/'; return; }
 
+  async function fetchCsrfToken() {
+    try {
+      const r = await fetch('/api/csrf-token', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (r.ok) {
+        const data = await r.json();
+        csrfToken = data.token;
+      }
+    } catch (e) {
+      console.error('Failed to fetch CSRF token:', e);
+    }
+  }
+
   async function fetchJSON(url, opts = {}) {
+    const headers = {
+      'Accept': 'application/json',
+      ...(opts.headers || {}),
+      Authorization: `Bearer ${token}`
+    };
+
+    if (opts.method && opts.method !== 'GET' && csrfToken) {
+      headers['x-csrf-token'] = csrfToken;
+    }
+
     const r = await fetch(url, {
       ...opts,
-      headers: {
-        'Accept': 'application/json',
-        ...(opts.headers || {}),
-        Authorization: `Bearer ${token}`
-      }
+      credentials: 'include',
+      headers
     });
     if (r.status === 401) {
       token = '';
@@ -37,12 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function logout(){
-    try { await fetch('/api/logout', { method:'POST', headers:{ Authorization: `Bearer ${token}` } }); } catch {}
+    try { await fetchJSON('/api/logout', { method:'POST' }); } catch {}
     token='';
     localStorage.removeItem('token');
     localStorage.removeItem('isAdmin');
     window.location.href = '/';
   }
+
+  await fetchCsrfToken();
 
   logoutBtn.addEventListener('click', logout);
 
