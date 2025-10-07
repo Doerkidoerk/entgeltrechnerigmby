@@ -5,6 +5,9 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+const csrf = require("csurf");
 const { z } = require("zod");
 const path = require("path");
 const fs = require("fs");
@@ -17,7 +20,9 @@ const DATA_DIR = path.join(__dirname, "data");
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"]; // custom sort order
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const INVITES_FILE = path.join(DATA_DIR, "invites.json");
+const AUDIT_LOG_FILE = path.join(DATA_DIR, "audit.log");
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60; // default 1h
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://entgeltrechner.cbmeyer.xyz").split(",");
 
 let users = Object.create(null); // { username: { salt, hash, isAdmin, mustChangePassword } }
 let sessions = Object.create(null); // { token: { username, expires } }
@@ -36,7 +41,7 @@ function loadUsers(){
 }
 
 function saveUsers(){
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), { mode: 0o600 });
 }
 
 function loadInvites(){
@@ -50,7 +55,20 @@ function loadInvites(){
 }
 
 function saveInvites(){
-  fs.writeFileSync(INVITES_FILE, JSON.stringify(invites, null, 2));
+  fs.writeFileSync(INVITES_FILE, JSON.stringify(invites, null, 2), { mode: 0o600 });
+}
+
+function auditLog(event, details = {}) {
+  const entry = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    event,
+    ...details
+  }) + "\n";
+  try {
+    fs.appendFileSync(AUDIT_LOG_FILE, entry, { mode: 0o600 });
+  } catch (err) {
+    console.error("[audit] Failed to write log:", err.message);
+  }
 }
 
 function hashPassword(pw, salt){
@@ -67,24 +85,71 @@ function createToken(){
 }
 
 function isStrongPassword(p){
-  return typeof p === "string" && p.length >= 8;
+  if (typeof p !== "string" || p.length < 12) return false;
+
+  // Mindestens: 1 Großbuchstabe, 1 Kleinbuchstabe, 1 Zahl, 1 Sonderzeichen
+  const hasUpperCase = /[A-Z]/.test(p);
+  const hasLowerCase = /[a-z]/.test(p);
+  const hasNumber = /[0-9]/.test(p);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p);
+
+  return hasUpperCase && hasLowerCase && hasNumber && hasSpecial;
 }
 
 function createInviteCode(){
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code;
   do {
-    code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    code = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
   } while (invites[code]);
-  invites[code] = { used: false, user: null };
+  const createdAt = Date.now();
+  const expiresAt = createdAt + (7 * 24 * 60 * 60 * 1000); // 7 Tage
+  invites[code] = { used: false, user: null, createdAt, expiresAt };
   saveInvites();
+  auditLog("invite_created", { code });
   return code;
 }
 
+// Rate limiters
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Minuten
+  max: 5, // max 5 Versuche
+  message: { error: "Too many login attempts. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === "test"
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Minuten
+  max: 100, // max 100 Requests
+  message: { error: "Too many requests. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === "test"
+});
+
 app.disable("x-powered-by");
-app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "same-site" } }));
-app.use(cors({ origin: ["https://entgeltrechner.cbmeyer.xyz"], methods: ["GET","POST"] }));
-app.use(express.json({ limit: "256kb" }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    }
+  },
+  crossOriginResourcePolicy: { policy: "same-site" },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true }
+}));
+app.use(cors({ origin: ALLOWED_ORIGINS, methods: ["GET","POST","PUT","DELETE"], credentials: true }));
+app.use(express.json({ limit: "20kb" }));
+app.use(cookieParser());
 app.use(morgan("combined"));
 
 function authMiddleware(req, res, next) {
@@ -173,6 +238,23 @@ if (process.env.NODE_ENV !== "test") {
 
 loadUsers();
 loadInvites();
+
+// Automatisches Session-Cleanup alle 10 Minuten
+if (process.env.NODE_ENV !== "test") {
+  setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const token of Object.keys(sessions)) {
+      if (sessions[token].expires < now) {
+        delete sessions[token];
+        cleaned++;
+      }
+    }
+    if (cleaned > 0) {
+      console.log(`[session-cleanup] Removed ${cleaned} expired sessions`);
+    }
+  }, 10 * 60 * 1000);
+}
 
 /** Hilfsfunktionen */
 const euro = n => Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
@@ -270,6 +352,9 @@ function calculate(input) {
 }
 
 /** Schemas */
+const UsernameSchema = z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/, "Username must be alphanumeric with underscores only");
+const PasswordSchema = z.string().min(12).max(128);
+
 const CalcSchema = z.object({
   tariffDate: z.string(),                 // Schlüsselname = Dateiname ohne .json (z. B. "current")
   eg: z.string().regex(/^(EG\d{2}|AJ[1-4])$/),
@@ -282,54 +367,133 @@ const CalcSchema = z.object({
   eigeneKinder: z.boolean().optional().default(false)
 });
 
-app.post("/api/register", ensureHttps, (req, res) => {
+app.post("/api/register", ensureHttps, loginLimiter, (req, res) => {
   const { username, password, code } = req.body || {};
-  if (!username || !password || !code) return res.status(400).json({ error: "Missing fields" });
-  if (users[username]) return res.status(400).json({ error: "User exists" });
-  if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
+
+  // Validierung
+  const usernameResult = UsernameSchema.safeParse(username);
+  const passwordResult = PasswordSchema.safeParse(password);
+
+  if (!usernameResult.success) {
+    auditLog("register_failed", { reason: "invalid_username", username });
+    return res.status(400).json({ error: "Invalid username format" });
+  }
+  if (!passwordResult.success) {
+    auditLog("register_failed", { reason: "invalid_password_length", username });
+    return res.status(400).json({ error: "Password must be 12-128 characters" });
+  }
+  if (!code) {
+    auditLog("register_failed", { reason: "missing_code", username });
+    return res.status(400).json({ error: "Missing invite code" });
+  }
+
+  if (users[username]) {
+    auditLog("register_failed", { reason: "user_exists", username });
+    return res.status(400).json({ error: "User exists" });
+  }
+  if (!isStrongPassword(password)) {
+    auditLog("register_failed", { reason: "weak_password", username });
+    return res.status(400).json({ error: "Password must contain uppercase, lowercase, number, and special character" });
+  }
+
   const inv = invites[code];
-  if (!inv || inv.used) return res.status(400).json({ error: "Invalid code" });
+  if (!inv || inv.used) {
+    auditLog("register_failed", { reason: "invalid_code", username, code });
+    return res.status(400).json({ error: "Invalid or used invite code" });
+  }
+
+  // Prüfe Ablaufzeit
+  if (inv.expiresAt && Date.now() > inv.expiresAt) {
+    auditLog("register_failed", { reason: "expired_code", username, code });
+    return res.status(400).json({ error: "Invite code expired" });
+  }
+
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = hashPassword(password, salt);
   users[username] = { salt, hash, isAdmin: false, mustChangePassword: false };
-  invites[code] = { used: true, user: username };
+  invites[code] = { ...inv, used: true, user: username, usedAt: Date.now() };
   saveUsers();
   saveInvites();
+
+  auditLog("user_registered", { username, code, ip: req.ip });
   res.json({ ok: true });
 });
 
-app.post("/api/login", ensureHttps, (req, res) => {
+app.post("/api/login", ensureHttps, loginLimiter, (req, res) => {
   const { username, password } = req.body || {};
+
+  // Timing-safe: immer Hash berechnen, auch wenn User nicht existiert
   const user = users[username];
-  if (!user || !verifyPassword(user, password)) {
+  const dummySalt = "0000000000000000";
+  const actualSalt = user ? user.salt : dummySalt;
+
+  // Timing-safe comparison
+  const providedHash = hashPassword(password || "", actualSalt);
+
+  if (!user) {
+    auditLog("login_failed", { username, reason: "user_not_found", ip: req.ip });
     return res.status(401).json({ error: "Invalid credentials" });
   }
+
+  if (!verifyPassword(user, password)) {
+    auditLog("login_failed", { username, reason: "wrong_password", ip: req.ip });
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+
   const token = createToken();
   sessions[token] = { username, expires: Date.now() + SESSION_TTL_MS };
+
+  auditLog("login_success", { username, ip: req.ip });
   res.json({ token, isAdmin: !!user.isAdmin, mustChangePassword: !!user.mustChangePassword, expires: SESSION_TTL_MS });
 });
 
 app.post("/api/change-password", ensureHttps, authMiddleware, (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
-  if (!oldPassword || !newPassword) return res.status(400).json({ error: "Missing fields" });
-  if (!isStrongPassword(newPassword)) return res.status(400).json({ error: "Weak password" });
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  const passwordResult = PasswordSchema.safeParse(newPassword);
+  if (!passwordResult.success) {
+    return res.status(400).json({ error: "Password must be 12-128 characters" });
+  }
+
+  if (!isStrongPassword(newPassword)) {
+    auditLog("password_change_failed", { username: req.username, reason: "weak_password", ip: req.ip });
+    return res.status(400).json({ error: "Password must contain uppercase, lowercase, number, and special character" });
+  }
+
   const user = req.user;
   if (!verifyPassword(user, oldPassword)) {
-    return res.status(400).json({ error: "Invalid password" });
+    auditLog("password_change_failed", { username: req.username, reason: "wrong_old_password", ip: req.ip });
+    return res.status(400).json({ error: "Invalid old password" });
   }
+
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = hashPassword(newPassword, salt);
   users[req.username] = { ...user, salt, hash, mustChangePassword: false };
   saveUsers();
+
+  // Session-Rotation: Alle Sessions des Benutzers ungültig machen (außer aktueller)
+  const currentToken = req.token;
+  for (const token of Object.keys(sessions)) {
+    if (sessions[token].username === req.username && token !== currentToken) {
+      delete sessions[token];
+    }
+  }
+
+  auditLog("password_changed", { username: req.username, ip: req.ip });
   res.json({ ok: true });
 });
 
 app.post("/api/logout", authMiddleware, (req, res) => {
   delete sessions[req.token];
+  auditLog("logout", { username: req.username, ip: req.ip });
   res.json({ ok: true });
 });
 
-app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
+app.get("/api/users", apiLimiter, authMiddleware, requireAdmin, (_req, res) => {
   const list = Object.entries(users).map(([username, u]) => ({
     username,
     isAdmin: !!u.isAdmin,
@@ -340,29 +504,57 @@ app.get("/api/users", authMiddleware, requireAdmin, (_req, res) => {
 
 app.post("/api/users", ensureHttps, authMiddleware, requireAdmin, (req, res) => {
   const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: "Missing fields" });
-  if (users[username]) return res.status(400).json({ error: "User exists" });
-  if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
+
+  const usernameResult = UsernameSchema.safeParse(username);
+  const passwordResult = PasswordSchema.safeParse(password);
+
+  if (!usernameResult.success) {
+    return res.status(400).json({ error: "Invalid username format" });
+  }
+  if (!passwordResult.success) {
+    return res.status(400).json({ error: "Password must be 12-128 characters" });
+  }
+  if (users[username]) {
+    return res.status(400).json({ error: "User exists" });
+  }
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: "Password must contain uppercase, lowercase, number, and special character" });
+  }
+
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = hashPassword(password, salt);
   users[username] = { salt, hash, isAdmin: false, mustChangePassword: false };
   saveUsers();
+
+  auditLog("user_created", { username, createdBy: req.username, ip: req.ip });
   res.json({ ok: true });
 });
 
 app.put("/api/users/:username/password", ensureHttps, authMiddleware, requireAdmin, (req, res) => {
   const name = req.params.username;
   const { password } = req.body || {};
+
   if (!users[name]) return res.status(404).json({ error: "User not found" });
-  if (!password) return res.status(400).json({ error: "Missing password" });
-  if (!isStrongPassword(password)) return res.status(400).json({ error: "Weak password" });
+
+  const passwordResult = PasswordSchema.safeParse(password);
+  if (!passwordResult.success) {
+    return res.status(400).json({ error: "Password must be 12-128 characters" });
+  }
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: "Password must contain uppercase, lowercase, number, and special character" });
+  }
+
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = hashPassword(password, salt);
   users[name] = { ...users[name], salt, hash, mustChangePassword: false };
+
+  // Alle Sessions des Benutzers löschen
   for (const t of Object.keys(sessions)) {
     if (sessions[t].username === name) delete sessions[t];
   }
   saveUsers();
+
+  auditLog("password_reset", { username: name, resetBy: req.username, ip: req.ip });
   res.json({ ok: true });
 });
 
@@ -370,15 +562,18 @@ app.delete("/api/users/:username", authMiddleware, requireAdmin, (req, res) => {
   const name = req.params.username;
   if (name === "admin") return res.status(400).json({ error: "Cannot delete admin" });
   if (!users[name]) return res.status(404).json({ error: "User not found" });
+
   delete users[name];
   for (const t of Object.keys(sessions)) {
     if (sessions[t].username === name) delete sessions[t];
   }
   for (const code of Object.keys(invites)) {
-    if (invites[code].user === name) invites[code] = { used: true, user: null };
+    if (invites[code].user === name) invites[code] = { ...invites[code], user: null };
   }
   saveUsers();
   saveInvites();
+
+  auditLog("user_deleted", { username: name, deletedBy: req.username, ip: req.ip });
   res.json({ ok: true });
 });
 
@@ -396,7 +591,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString(), tables: Object.keys(tablesByKey) });
 });
 
-app.get("/api/tables", authMiddleware, (_req, res) => {
+app.get("/api/tables", apiLimiter, authMiddleware, (_req, res) => {
   res.set("Cache-Control", "public, max-age=300");
   const keys = Object.keys(tablesByKey).sort((a, b) => {
     const ia = TARIFF_ORDER.indexOf(a);
@@ -412,7 +607,7 @@ app.get("/api/tables", authMiddleware, (_req, res) => {
   });
 });
 
-app.get("/api/tables/:key", authMiddleware, (req, res) => {
+app.get("/api/tables/:key", apiLimiter, authMiddleware, (req, res) => {
   const key = req.params.key;
   const entry = getEntry(key);
   if (!entry) return res.status(404).json({ error: `Tabelle '${key}' nicht gefunden` });
@@ -420,7 +615,7 @@ app.get("/api/tables/:key", authMiddleware, (req, res) => {
   res.json({ key, table: entry.table, atMin: entry.atMin });
 });
 
-app.post("/api/calc", authMiddleware, (req, res) => {
+app.post("/api/calc", apiLimiter, authMiddleware, (req, res) => {
   const parsed = CalcSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
