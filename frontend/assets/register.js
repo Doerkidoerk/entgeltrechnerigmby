@@ -1,10 +1,29 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const code = document.getElementById('regCode');
   const user = document.getElementById('regUser');
   const pass = document.getElementById('regPass');
   const pass2 = document.getElementById('regPass2');
   const btn = document.getElementById('regBtn');
   const err = document.getElementById('regError');
+
+  let csrfToken = '';
+
+  async function fetchCsrfToken() {
+    try {
+      const r = await fetch('/api/csrf-token', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (r.ok) {
+        const data = await r.json();
+        csrfToken = data.token;
+      }
+    } catch (e) {
+      console.error('Failed to fetch CSRF token:', e);
+    }
+  }
+
+  await fetchCsrfToken();
 
   btn.addEventListener('click', async () => {
     err.textContent = '';
@@ -13,7 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const r = await fetch('/api/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-csrf-token': csrfToken
+        },
         body: JSON.stringify({ code: code.value.trim(), username: user.value.trim(), password: pass.value })
       });
       if (!r.ok) {

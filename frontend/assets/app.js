@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const loginPanel = $("loginPanel"), loginUser = $("loginUser"), loginPass = $("loginPass"), loginBtn = $("loginBtn"), loginError = $("loginError"), appWrap = $("app");
   let authToken = localStorage.getItem("token") || "";
   let isAdmin = localStorage.getItem("isAdmin") === "1";
+  let csrfToken = "";
     const els = {
       tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
       stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
@@ -93,14 +94,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // API
+  async function fetchCsrfToken() {
+    try {
+      const r = await fetch("/api/csrf-token", {
+        method: "GET",
+        credentials: "include"
+      });
+      if (r.ok) {
+        const data = await r.json();
+        csrfToken = data.token;
+      }
+    } catch (e) {
+      console.error("Failed to fetch CSRF token:", e);
+    }
+  }
+
   async function fetchJSON(url, opts = {}) {
+    const headers = {
+      "Accept": "application/json",
+      ...(opts.headers || {}),
+      ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
+    };
+
+    // Add CSRF token for non-GET requests
+    if (opts.method && opts.method !== "GET" && csrfToken) {
+      headers["x-csrf-token"] = csrfToken;
+    }
+
     const r = await fetch(url, {
       ...opts,
-      headers: {
-        "Accept": "application/json",
-        ...(opts.headers || {}),
-        ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
-      }
+      credentials: "include",
+      headers
     });
     if (r.status === 401) {
       logout();
@@ -125,6 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Init
   async function init(){
+    await fetchCsrfToken();
     try { await fetchJSON("/api/health"); setStatus("API OK","ok"); }
     catch { setStatus("API down","err"); }
 
@@ -222,6 +247,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loginError.textContent = 'HTTPS erforderlich';
       return;
     }
+    await fetchCsrfToken();
     try {
       const res = await fetchJSON("/api/login", {
         method: "POST",
