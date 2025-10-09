@@ -92,10 +92,32 @@ cd api
 npm test
 ```
 
+## Updates
+
+### Automatisches Update
+
+Für Produktions-Installationen steht ein automatisches Update-Script zur Verfügung:
+
+```bash
+cd /opt/entgeltrechner/app
+sudo ./upgrade.sh
+```
+
+Das Script führt automatisch durch:
+- Backup vor dem Update
+- Code-Aktualisierung via git
+- npm-Abhängigkeiten installieren
+- Berechtigungen prüfen
+- Service neu starten
+- Health-Check
+
+**Wichtig:** Vor jedem Update `CHANGELOG.md` auf Breaking Changes prüfen!
+
 ## Dokumentation
 
-- **[INSTALL.md](./INSTALL.md)** - Ausführliche Installationsanleitung (867 Zeilen)
+- **[INSTALL.md](./INSTALL.md)** - Ausführliche Installationsanleitung
 - **[SECURITY.md](./SECURITY.md)** - Sicherheitsfeatures und Best Practices
+- **[CHANGELOG.md](./CHANGELOG.md)** - Versionshistorie und Breaking Changes
 
 ## Projektstruktur
 

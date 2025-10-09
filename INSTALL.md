@@ -851,13 +851,30 @@ sudo systemctl status entgeltrechner
 
 ### Automatisches Update (upgrade.sh)
 
+Das mitgelieferte `upgrade.sh` Script führt alle Update-Schritte automatisch durch:
+
 ```bash
-# Script ausführen
+# Script ausführen (als root/sudo)
 cd /opt/entgeltrechner/app
-sudo -u entgeltrechner ./upgrade.sh
+sudo ./upgrade.sh
 ```
 
-**Wichtig:** Lesen Sie vor Updates immer `CHANGELOG.md` und `SECURITY.md` auf Breaking Changes.
+Das Script führt folgende Aktionen durch:
+1. Prüft Voraussetzungen und verfügbare Updates
+2. Erstellt automatisches Backup vor dem Update
+3. Stoppt den Service sicher
+4. Aktualisiert den Code via `git pull`
+5. Installiert neue npm-Abhängigkeiten
+6. Prüft und korrigiert Datei-Berechtigungen
+7. Führt Migrations-Scripts aus (falls vorhanden)
+8. Startet den Service neu
+9. Führt Health-Check durch
+10. Zeigt Rollback-Anleitung bei Problemen
+
+**Wichtig:**
+- Das Script muss als root/sudo ausgeführt werden
+- Lesen Sie vor Updates immer `CHANGELOG.md` auf Breaking Changes
+- Bei Problemen siehe Rollback-Anleitung (wird vom Script angezeigt)
 
 ### Version prüfen
 
