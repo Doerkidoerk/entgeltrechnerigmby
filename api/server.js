@@ -34,8 +34,8 @@ function loadUsers(){
     users = JSON.parse(buf);
   } catch {
     const salt = crypto.randomBytes(16).toString("hex");
-    // In test mode, use a strong password that matches test expectations
-    const defaultPass = process.env.NODE_ENV === "test" ? "Admin123!Test" : "admin";
+    // DEFAULT_ADMIN_PASSWORD kann optional gesetzt werden, sonst starker Standard
+    const defaultPass = process.env.DEFAULT_ADMIN_PASSWORD || "Admin123!Test";
     const hash = crypto.scryptSync(defaultPass, salt, 64).toString("hex");
     users = { admin: { salt, hash, isAdmin: true, mustChangePassword: true } };
     saveUsers();
