@@ -137,25 +137,26 @@ npx live-server --port=8080
 #### 1. Benutzer anlegen
 
 ```bash
-# Service-Benutzer mit Home-Verzeichnis erstellen (falls noch nicht vorhanden)
-sudo useradd -m -s /bin/bash entgeltrechner
+# Service-Benutzer ohne Home-Verzeichnis erstellen (falls noch nicht vorhanden)
+sudo useradd -M -s /bin/bash entgeltrechner
 
 # Bereitstellungsverzeichnis vorbereiten
 sudo mkdir -p /opt/entgeltrechner
 sudo chown entgeltrechner:entgeltrechner /opt/entgeltrechner
 ```
 
-> Hinweis: Falls der Benutzer bereits existiert und ein anderes Home-Verzeichnis nutzt (z. B. `/opt/entgeltrechner`), passen Sie die nachfolgenden `NVM_DIR`-Pfadangaben entsprechend an.
+> Hinweis: Für den Benutzer `entgeltrechner` wird bewusst **kein** Home-Verzeichnis angelegt. Alle komponentenbezogenen Daten (inkl. `nvm`) werden in `/opt/entgeltrechner` verwaltet.
 
 #### 2. nvm & Node.js vorbereiten
 
 ```bash
 # In eine Shell des entgeltrechner-Benutzers wechseln
-sudo -u entgeltrechner -i
+sudo -u entgeltrechner -s
 
 # Innerhalb der entgeltrechner-Shell:
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="/opt/entgeltrechner/.nvm"
+mkdir -p "$NVM_DIR"
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | NVM_DIR="$NVM_DIR" bash
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 nvm install lts/jod
 nvm alias default lts/jod
@@ -170,18 +171,21 @@ exit
 
 ```bash
 # Als entgeltrechner-Benutzer
-sudo -u entgeltrechner -i
+sudo -u entgeltrechner -s
 cd /opt/entgeltrechner
-git clone https://github.com/yourusername/entgeltrechnerigmby.git app
+git clone --filter=blob:none --sparse https://github.com/yourusername/entgeltrechnerigmby.git app
 cd app
+git sparse-checkout set api frontend
 ```
 
-Bleiben Sie für die nächsten Befehle in dieser Shell – alle Installationsschritte laufen unter dem Benutzer `entgeltrechner`.
+Bleiben Sie für die nächsten Befehle in dieser Shell – alle Installationsschritte laufen unter dem Benutzer `entgeltrechner`. Durch das Sparse-Checkout werden nur die für die Web-App benötigten Komponenten (`api` und `frontend`) übertragen.
 
 #### 4. Backend installieren
 
 ```bash
 cd /opt/entgeltrechner/app/api
+export NVM_DIR="/opt/entgeltrechner/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 nvm use   # liest die .nvmrc und aktiviert Node 22 LTS
 npm ci --omit=dev
 ```
@@ -253,8 +257,8 @@ User=entgeltrechner
 Group=entgeltrechner
 WorkingDirectory=/opt/entgeltrechner/app/api
 EnvironmentFile=/opt/entgeltrechner/.env
-Environment="NVM_DIR=/home/entgeltrechner/.nvm"
-ExecStart=/bin/bash -lc 'source /home/entgeltrechner/.nvm/nvm.sh && cd /opt/entgeltrechner/app/api && nvm use --silent && exec node server.js'
+Environment="NVM_DIR=/opt/entgeltrechner/.nvm"
+ExecStart=/bin/bash -lc 'source /opt/entgeltrechner/.nvm/nvm.sh && cd /opt/entgeltrechner/app/api && nvm use --silent && exec node server.js'
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
