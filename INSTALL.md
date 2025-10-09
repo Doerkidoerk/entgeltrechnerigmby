@@ -137,23 +137,32 @@ npx live-server --port=8080
 #### 1. Benutzer anlegen
 
 ```bash
-# Service-Benutzer ohne Home-Verzeichnis erstellen (falls noch nicht vorhanden)
-sudo useradd -M -s /bin/bash entgeltrechner
+# Service-Benutzer ohne Home-Verzeichnis auf /opt/entgeltrechner legen (falls noch nicht vorhanden)
+sudo useradd -M -d /opt/entgeltrechner -s /bin/bash entgeltrechner
 
 # Bereitstellungsverzeichnis vorbereiten
 sudo mkdir -p /opt/entgeltrechner
 sudo chown entgeltrechner:entgeltrechner /opt/entgeltrechner
+
+# Validierung: Prüfen, dass das Home-Verzeichnis korrekt gesetzt ist
+getent passwd entgeltrechner | cut -d: -f6
 ```
 
-> Hinweis: Für den Benutzer `entgeltrechner` wird bewusst **kein** Home-Verzeichnis angelegt. Alle komponentenbezogenen Daten (inkl. `nvm`) werden in `/opt/entgeltrechner` verwaltet.
+> Hinweis: Für den Benutzer `entgeltrechner` wird bewusst **kein** separates Home-Verzeichnis unter `/home` angelegt. Die Variable `$HOME` verweist auf `/opt/entgeltrechner`, womit sämtliche komponentenbezogenen Daten (inkl. `nvm` sowie npm-Caches) konsistent im Anwendungsverzeichnis verbleiben. Falls `getent passwd` noch `/home/entgeltrechner` meldet (z. B. von einer früheren Installation), setzen Sie das Home-Verzeichnis einmalig um:
+> ```bash
+> sudo usermod -d /opt/entgeltrechner entgeltrechner
+> sudo mkdir -p /opt/entgeltrechner
+> sudo chown -R entgeltrechner:entgeltrechner /opt/entgeltrechner
+> ```
 
 #### 2. nvm & Node.js vorbereiten
 
 ```bash
-# In eine Shell des entgeltrechner-Benutzers wechseln
-sudo -u entgeltrechner -s
+# In eine Shell des entgeltrechner-Benutzers wechseln (setzt $HOME automatisch auf /opt/entgeltrechner)
+sudo -u entgeltrechner -H -s
 
 # Innerhalb der entgeltrechner-Shell:
+echo "HOME ist auf $HOME gesetzt"   # Validierung
 export NVM_DIR="/opt/entgeltrechner/.nvm"
 mkdir -p "$NVM_DIR"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | NVM_DIR="$NVM_DIR" bash
@@ -163,6 +172,17 @@ nvm alias default lts/jod
 node --version   # Erwartet: v22.x.x
 npm --version
 
+# npm-Konfigurationsdatei im Anwendungsverzeichnis ablegen
+cat <<'EOF' > /opt/entgeltrechner/.npmrc
+cache=/opt/entgeltrechner/.npm/cache
+logs-dir=/opt/entgeltrechner/.npm/_logs
+tmp=/opt/entgeltrechner/.npm/_tmp
+prefix=/opt/entgeltrechner/.npm-global
+EOF
+install -d -m 0700 /opt/entgeltrechner/.npm/{cache,_logs,_tmp}
+install -d -m 0755 /opt/entgeltrechner/.npm-global
+cat /opt/entgeltrechner/.npmrc   # Validierung
+
 # Zurück zur Root-Shell (falls erforderlich)
 exit
 ```
@@ -171,7 +191,7 @@ exit
 
 ```bash
 # Als entgeltrechner-Benutzer
-sudo -u entgeltrechner -s
+sudo -u entgeltrechner -H -s
 cd /opt/entgeltrechner
 git clone --filter=blob:none --sparse https://github.com/yourusername/entgeltrechnerigmby.git app
 cd app
@@ -186,6 +206,13 @@ Bleiben Sie für die nächsten Befehle in dieser Shell – alle Installationssch
 cd /opt/entgeltrechner/app/api
 export NVM_DIR="/opt/entgeltrechner/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+export HOME="/opt/entgeltrechner"   # Fallback, falls die Shell ohne -H gestartet wurde
+export NPM_CONFIG_USERCONFIG="/opt/entgeltrechner/.npmrc"
+export NPM_CONFIG_CACHE="/opt/entgeltrechner/.npm/cache"
+export NPM_CONFIG_TMP="/opt/entgeltrechner/.npm/_tmp"
+export NPM_CONFIG_LOGS_DIR="/opt/entgeltrechner/.npm/_logs"
+echo "HOME=$HOME"   # Validierung
+npm config get cache   # Validierung: sollte /opt/entgeltrechner/.npm/cache ausgeben
 nvm use   # liest die .nvmrc und aktiviert Node 22 LTS
 npm ci --omit=dev
 ```
@@ -258,6 +285,7 @@ Group=entgeltrechner
 WorkingDirectory=/opt/entgeltrechner/app/api
 EnvironmentFile=/opt/entgeltrechner/.env
 Environment="NVM_DIR=/opt/entgeltrechner/.nvm"
+Environment="HOME=/opt/entgeltrechner"
 ExecStart=/bin/bash -lc 'source /opt/entgeltrechner/.nvm/nvm.sh && cd /opt/entgeltrechner/app/api && nvm use --silent && exec node server.js'
 Restart=on-failure
 RestartSec=10
