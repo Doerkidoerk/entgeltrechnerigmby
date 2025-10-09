@@ -21,8 +21,8 @@ Ausführliche Installationsanleitung für die Entgeltrechner-WebApp (v1.12+).
 ### Mindestanforderungen
 
 - **Betriebssystem:** Linux (empfohlen), macOS, oder Windows
-- **Node.js:** Version 18.x oder neuer
-- **npm:** Version 9.x oder neuer
+- **Node.js:** Version 22.x (empfohlen: per `nvm` als Benutzerinstallation)
+- **npm:** Wird über `nvm` gemeinsam mit Node.js installiert
 - **RAM:** Mindestens 512 MB (1 GB empfohlen)
 - **Festplatte:** Mindestens 500 MB freier Speicher
 
@@ -36,27 +36,31 @@ Ausführliche Installationsanleitung für die Entgeltrechner-WebApp (v1.12+).
 ### Abhängigkeiten prüfen
 
 ```bash
+# nvm initialisieren (falls noch nicht im Profil)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+
 # Node.js-Version prüfen
 node --version
-# Sollte v18.x.x oder höher ausgeben
+# Sollte v22.x.x oder höher ausgeben
 
 # npm-Version prüfen
 npm --version
-# Sollte 9.x.x oder höher ausgeben
+# Wird automatisch mit Node.js geliefert
 ```
 
-Wenn Node.js/npm nicht installiert sind:
+Wenn Node.js/npm noch nicht installiert sind, verwenden Sie `nvm`:
 ```bash
-# Debian/Ubuntu
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Als Zielbenutzer (z. B. entgeltrechner) nvm installieren
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
-# RHEL/CentOS/Fedora
-curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-sudo yum install -y nodejs
+# nvm in der aktuellen Shell laden
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 
-# macOS (mit Homebrew)
-brew install node
+# Node.js 22 LTS installieren und als Standard setzen
+nvm install lts/jod
+nvm alias default lts/jod
 ```
 
 ---
@@ -76,7 +80,19 @@ cd entgeltrechnerigmby
 
 ```bash
 cd api
+
+# Sicherstellen, dass nvm geladen ist
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+
+# Node.js-Version einmalig installieren (liest .nvmrc)
+nvm install
+nvm use   # aktiviert die in .nvmrc definierte Node-Version
+
+# Dependencies für die Entwicklung
 npm install
+
+# API lokal starten
 node server.js
 ```
 
@@ -98,9 +114,8 @@ Frontend ist erreichbar unter `http://localhost:8080`.
 
 **Option B: Mit Live-Server (für Entwicklung)**
 ```bash
-npm install -g live-server
 cd frontend
-live-server --port=8080
+npx live-server --port=8080
 ```
 
 ### 4. Erste Anmeldung
@@ -122,13 +137,36 @@ live-server --port=8080
 #### 1. Benutzer anlegen
 
 ```bash
-# Dedizierten Benutzer für die Anwendung erstellen
-sudo useradd -r -s /bin/bash -d /opt/entgeltrechner entgeltrechner
+# Service-Benutzer mit Home-Verzeichnis erstellen (falls noch nicht vorhanden)
+sudo useradd -m -s /bin/bash entgeltrechner
+
+# Bereitstellungsverzeichnis vorbereiten
 sudo mkdir -p /opt/entgeltrechner
 sudo chown entgeltrechner:entgeltrechner /opt/entgeltrechner
 ```
 
-#### 2. Repository installieren
+> Hinweis: Falls der Benutzer bereits existiert und ein anderes Home-Verzeichnis nutzt (z. B. `/opt/entgeltrechner`), passen Sie die nachfolgenden `NVM_DIR`-Pfadangaben entsprechend an.
+
+#### 2. nvm & Node.js vorbereiten
+
+```bash
+# In eine Shell des entgeltrechner-Benutzers wechseln
+sudo -u entgeltrechner -i
+
+# Innerhalb der entgeltrechner-Shell:
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+nvm install lts/jod
+nvm alias default lts/jod
+node --version   # Erwartet: v22.x.x
+npm --version
+
+# Zurück zur Root-Shell (falls erforderlich)
+exit
+```
+
+#### 3. Repository installieren
 
 ```bash
 # Als entgeltrechner-Benutzer
@@ -138,16 +176,23 @@ git clone https://github.com/yourusername/entgeltrechnerigmby.git app
 cd app
 ```
 
-#### 3. Backend installieren
+Bleiben Sie für die nächsten Befehle in dieser Shell – alle Installationsschritte laufen unter dem Benutzer `entgeltrechner`.
+
+#### 4. Backend installieren
 
 ```bash
 cd /opt/entgeltrechner/app/api
-npm install --production
+nvm use   # liest die .nvmrc und aktiviert Node 22 LTS
+npm ci --omit=dev
 ```
+
+> Standardmäßig liegt unter `api/data/users.json` bereits ein Administrator-Konto (`admin` / `Admin123!Test`). Falls Sie bestehende Daten übernehmen, ersetzen Sie die Datei vor dem ersten Start entsprechend.
+
+Nach Abschluss können Sie die `entgeltrechner`-Shell mit `exit` verlassen.
 
 ### Konfiguration
 
-#### 4. Umgebungsvariablen einrichten
+#### 5. Umgebungsvariablen einrichten
 
 ```bash
 sudo nano /opt/entgeltrechner/.env
@@ -180,7 +225,7 @@ LOG_LEVEL=info
 openssl rand -base64 48
 ```
 
-#### 5. Berechtigungen setzen
+#### 6. Berechtigungen setzen
 
 ```bash
 chmod 600 /opt/entgeltrechner/.env
@@ -189,7 +234,7 @@ chown entgeltrechner:entgeltrechner /opt/entgeltrechner/.env
 
 ### Systemd-Service einrichten
 
-#### 6. Service-Datei erstellen
+#### 7. Service-Datei erstellen
 
 ```bash
 sudo nano /etc/systemd/system/entgeltrechner.service
@@ -208,7 +253,8 @@ User=entgeltrechner
 Group=entgeltrechner
 WorkingDirectory=/opt/entgeltrechner/app/api
 EnvironmentFile=/opt/entgeltrechner/.env
-ExecStart=/usr/bin/node /opt/entgeltrechner/app/api/server.js
+Environment="NVM_DIR=/home/entgeltrechner/.nvm"
+ExecStart=/bin/bash -lc 'source /home/entgeltrechner/.nvm/nvm.sh && cd /opt/entgeltrechner/app/api && nvm use --silent && exec node server.js'
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -226,7 +272,7 @@ ReadWritePaths=/opt/entgeltrechner/app/api/data
 WantedBy=multi-user.target
 ```
 
-#### 7. Service aktivieren und starten
+#### 8. Service aktivieren und starten
 
 ```bash
 # Service neu laden
@@ -247,7 +293,7 @@ sudo journalctl -u entgeltrechner -f
 
 ### nginx als Reverse Proxy
 
-#### 8. nginx installieren
+#### 9. nginx installieren
 
 ```bash
 # Debian/Ubuntu
@@ -258,7 +304,7 @@ sudo apt-get install nginx
 sudo yum install nginx
 ```
 
-#### 9. nginx-Konfiguration erstellen
+#### 10. nginx-Konfiguration erstellen
 
 ```bash
 sudo nano /etc/nginx/sites-available/entgeltrechner
@@ -342,7 +388,7 @@ server {
 }
 ```
 
-#### 10. nginx-Konfiguration aktivieren
+#### 11. nginx-Konfiguration aktivieren
 
 ```bash
 # Symlink erstellen
@@ -358,7 +404,7 @@ sudo systemctl enable nginx
 
 ### SSL-Zertifikat mit Let's Encrypt
 
-#### 11. Certbot installieren
+#### 12. Certbot installieren
 
 ```bash
 # Debian/Ubuntu
@@ -368,7 +414,7 @@ sudo apt-get install certbot python3-certbot-nginx
 sudo yum install certbot python3-certbot-nginx
 ```
 
-#### 12. Zertifikat erstellen
+#### 13. Zertifikat erstellen
 
 ```bash
 # Zertifikat anfordern
@@ -382,7 +428,7 @@ Certbot richtet automatisch einen Cron-Job für die Zertifikatserneuerung ein.
 
 ### Firewall konfigurieren
 
-#### 13. Firewall-Regeln
+#### 14. Firewall-Regeln
 
 ```bash
 # ufw (Ubuntu/Debian)
@@ -409,6 +455,7 @@ sudo firewall-cmd --reload
 | `SESSION_TTL_MS` | Session-Gültigkeit in Millisekunden | `3600000` (1h) | Nein |
 | `CSRF_SECRET` | Secret für CSRF-Token-Generierung | - | **Ja (Produktion)** |
 | `ALLOWED_ORIGINS` | Erlaubte CORS-Origins (kommasepariert) | `https://entgeltrechner.cbmeyer.xyz` | Ja |
+| `DEFAULT_ADMIN_PASSWORD` | Startpasswort für den Benutzer `admin`, wenn `data/users.json` fehlt | `Admin123!Test` | Nein |
 
 ### Tariftabellen
 

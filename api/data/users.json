@@ -1,44 +1,8 @@
 {
   "admin": {
-    "salt": "fdda2f6ce22c1fa18293ab5c25c99927",
-    "hash": "69196696c02f7b2cdfae52b2823ae08cc54713eea433a3fed445b607141ea7f39db88fcfa2776ef75c595c528412e01cb7443f58a73d2fe3c82abfaada2f9835",
+    "salt": "d55c56f04476a3a9ba758ede1e239aa2",
+    "hash": "ebba37e154e6f90e9e0a036deffb43506b75d678571fd8b2661d2d6a87bb4c2339801a1905818e474aeabbda2b78b12791238473f6f561bc5748176d4c0e39da",
     "isAdmin": true,
     "mustChangePassword": true
-  },
-  "alice1759870765214": {
-    "salt": "168dc791e59da27e2c5b617d1522950f",
-    "hash": "283d1d6dad3b1f92e8c946cc72def1d60361d9deea9d85be0b26c0804d450df2385be5d8611ebe9024d42d6bc4e2ed784dcb50293d00d04bdf3eaac8b90d073f",
-    "isAdmin": false,
-    "mustChangePassword": false
-  },
-  "bob1759870765367": {
-    "salt": "c2ca114ae4c6d9647c7b844df3d8a971",
-    "hash": "622d22c5697911e4d04e1808789fc83abbf867dbd11def3005e667f3507b4de0cef8d9c188419a7543e039ff9d4d1ed92a202fdcbd144733fb34d27e1b95dd75",
-    "isAdmin": false,
-    "mustChangePassword": false
-  },
-  "testuser1759870766122": {
-    "salt": "d562c4d39c53aee67af94e705ed960df",
-    "hash": "c48f2a7c5e58b67aa140d7486fe09d0ac0a17f65ce366f7bc5cd6ecfa1a3148d362767a0a17b9d2d331cbf0578e3c39ae41e92d2c763e9a373e01f1f80e8f74f",
-    "isAdmin": false,
-    "mustChangePassword": false
-  },
-  "alice1759870782410": {
-    "salt": "dab260e9102503b929bccbc70fd04120",
-    "hash": "0b6a41533a8dac4570ada2530e0e329574932af6b439aaa42656210373b0a03570d7da1b0149f32c6d096dab7166fa5d268579737d3527de7b55a1be9e14d654",
-    "isAdmin": false,
-    "mustChangePassword": false
-  },
-  "bob1759870782562": {
-    "salt": "d177b076d0b6d107602da74e2696ad59",
-    "hash": "572938682ca50e8f22efd3fb95c5ea182a524f5841d1ff46563278dbebbf8de75b5076339be9fb71f805a7305d0c8c5a9dcba22ae2126b0e51443b19cee6c0b4",
-    "isAdmin": false,
-    "mustChangePassword": false
-  },
-  "testuser1759870783308": {
-    "salt": "63a0455c89543fc1cf2a15d861412a00",
-    "hash": "84fa391a09e03ed2787e85b1343bcfe557ac95bb32799caef2a4209562349378490e29a78b676097295749c01af2e1da0509bf26d0d83d84e0130422e2b45b0f",
-    "isAdmin": false,
-    "mustChangePassword": false
   }
 }
