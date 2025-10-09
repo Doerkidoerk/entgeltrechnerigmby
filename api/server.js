@@ -23,26 +23,86 @@ const INVITES_FILE = path.join(DATA_DIR, "invites.json");
 const AUDIT_LOG_FILE = path.join(DATA_DIR, "audit.log");
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 1000 * 60 * 60; // default 1h
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://entgeltrechner.cbmeyer.xyz").split(",");
+const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || "Admin123!Test";
 
 let users = Object.create(null); // { username: { salt, hash, isAdmin, mustChangePassword } }
 let sessions = Object.create(null); // { token: { username, expires } }
 let invites = Object.create(null); // { code: { used: bool, user: string|null } }
 
+function ensureDataDir(){
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch {}
+}
+
+function createAdminRecord(password = DEFAULT_ADMIN_PASSWORD){
+  const salt = crypto.randomBytes(16).toString("hex");
+  return {
+    salt,
+    hash: hashPassword(password, salt),
+    isAdmin: true,
+    mustChangePassword: true
+  };
+}
+
+function ensureDefaultAdmin(){
+  const adminPassword = DEFAULT_ADMIN_PASSWORD;
+  let admin = users.admin;
+  let shouldSave = false;
+
+  const rebuild = () => {
+    admin = createAdminRecord(adminPassword);
+    shouldSave = true;
+  };
+
+  if (!admin || typeof admin !== "object") {
+    rebuild();
+  } else {
+    let updated = { ...admin };
+
+    if (updated.isAdmin !== true) {
+      updated.isAdmin = true;
+      shouldSave = true;
+    }
+
+    const hasSalt = typeof updated.salt === "string" && updated.salt.length > 0;
+    const hasHash = typeof updated.hash === "string" && updated.hash.length > 0;
+
+    if (!hasSalt || !hasHash) {
+      rebuild();
+    } else if (updated.mustChangePassword !== false) {
+      try {
+        if (!verifyPassword(updated, adminPassword)) {
+          rebuild();
+        } else {
+          admin = updated;
+        }
+      } catch {
+        rebuild();
+      }
+    } else {
+      admin = updated;
+    }
+  }
+
+  users.admin = admin;
+  if (shouldSave) saveUsers();
+}
+
 function loadUsers(){
+  ensureDataDir();
   try {
     const buf = fs.readFileSync(USERS_FILE, "utf8");
     users = JSON.parse(buf);
   } catch {
-    const salt = crypto.randomBytes(16).toString("hex");
-    // DEFAULT_ADMIN_PASSWORD kann optional gesetzt werden, sonst starker Standard
-    const defaultPass = process.env.DEFAULT_ADMIN_PASSWORD || "Admin123!Test";
-    const hash = crypto.scryptSync(defaultPass, salt, 64).toString("hex");
-    users = { admin: { salt, hash, isAdmin: true, mustChangePassword: true } };
+    users = { admin: createAdminRecord() };
     saveUsers();
   }
+  ensureDefaultAdmin();
 }
 
 function saveUsers(){
+  ensureDataDir();
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), { mode: 0o600 });
 }
 
@@ -241,7 +301,9 @@ async function loadAllTables() {
 
   tablesByKey = map;
   tablesMeta = meta;
-  console.log(`[tables] geladen: ${Object.keys(tablesByKey).join(", ") || "(keine)"}`);
+  if (process.env.NODE_ENV !== "test") {
+    console.log(`[tables] geladen: ${Object.keys(tablesByKey).join(", ") || "(keine)"}`);
+  }
 }
 
 // Initial laden & bei Änderungen auto-reloaden
