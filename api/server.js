@@ -45,7 +45,7 @@ function createAdminRecord(password = DEFAULT_ADMIN_PASSWORD){
   };
 }
 
-function ensureDefaultAdmin(){
+function ensureDefaultAdmin({ allowPersist = true } = {}){
   const adminPassword = DEFAULT_ADMIN_PASSWORD;
   let admin = users.admin;
   let shouldSave = false;
@@ -86,18 +86,22 @@ function ensureDefaultAdmin(){
   }
 
   users.admin = admin;
-  if (shouldSave) saveUsers();
+  if (shouldSave && allowPersist) saveUsers();
 }
 
 function loadUsers(){
   ensureDataDir();
+  let allowPersist = true;
   try {
     const buf = fs.readFileSync(USERS_FILE, "utf8");
     users = JSON.parse(buf);
-  } catch {
+  } catch (err) {
+    if (err && err.code === "ENOENT") {
+      allowPersist = false;
+    }
     users = { admin: createAdminRecord() };
   }
-  ensureDefaultAdmin();
+  ensureDefaultAdmin({ allowPersist });
 }
 
 function saveUsers(){

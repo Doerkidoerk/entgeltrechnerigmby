@@ -38,6 +38,29 @@ test('creates default admin when users file is missing', async () => {
   expect(res.body.mustChangePassword).toBe(true);
 });
 
+test('persists users.json only after the admin password is changed', async () => {
+  if (fs.existsSync(USERS_FILE)) {
+    fs.unlinkSync(USERS_FILE);
+  }
+
+  const app = require('./server');
+  const login = await https(request(app).post('/api/login')).send({ username: 'admin', password: 'Admin123!Test' });
+
+  expect(login.status).toBe(200);
+  expect(fs.existsSync(USERS_FILE)).toBe(false);
+
+  const newPassword = 'AdminFresh123!';
+  const change = await https(request(app)
+    .post('/api/change-password')
+    .set('Authorization', `Bearer ${login.body.token}`))
+    .send({ oldPassword: 'Admin123!Test', newPassword });
+
+  expect(change.status).toBe(200);
+  expect(fs.existsSync(USERS_FILE)).toBe(true);
+  const stored = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+  expect(stored.admin.mustChangePassword).toBe(false);
+});
+
 test('repairs default admin password when stored hash is invalid', async () => {
   const corrupted = {
     admin: {
