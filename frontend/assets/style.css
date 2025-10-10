@@ -134,4 +134,3 @@ html[data-theme="light"] .toast{background:rgba(0,0,0,.85)}
 /* ==== Misc ==== */
 .noscript{padding:10px;margin:0;background:#ffdede;color:#400;border-bottom:1px solid #c00;text-align:center}
 .hidden{display:none}
-#loginPanel{max-width:400px;margin:2rem auto}
