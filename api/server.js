@@ -35,6 +35,16 @@ function ensureDataDir(){
   } catch {}
 }
 
+function sanitizeUserMap(raw){
+  const map = Object.create(null);
+  if (!raw || typeof raw !== "object") return map;
+  for (const [name, value] of Object.entries(raw)) {
+    if (!value || typeof value !== "object") continue;
+    map[name] = { ...value };
+  }
+  return map;
+}
+
 function createAdminRecord(password = DEFAULT_ADMIN_PASSWORD){
   const salt = crypto.randomBytes(16).toString("hex");
   return {
@@ -94,12 +104,14 @@ function loadUsers(){
   let allowPersist = true;
   try {
     const buf = fs.readFileSync(USERS_FILE, "utf8");
-    users = JSON.parse(buf);
+    users = sanitizeUserMap(JSON.parse(buf));
   } catch (err) {
     if (err && err.code === "ENOENT") {
       allowPersist = false;
+    } else if (err) {
+      console.warn(`[users] Failed to load users.json: ${err.message}`);
     }
-    users = { admin: createAdminRecord() };
+    users = Object.create(null);
   }
   ensureDefaultAdmin({ allowPersist });
 }
@@ -107,6 +119,15 @@ function loadUsers(){
 function saveUsers(){
   ensureDataDir();
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), { mode: 0o600 });
+}
+
+function getUserRecord(username, { allowPersist } = {}) {
+  if (username === "admin") {
+    const persist = typeof allowPersist === "boolean" ? allowPersist : fs.existsSync(USERS_FILE);
+    ensureDefaultAdmin({ allowPersist: persist });
+    return users.admin;
+  }
+  return users[username];
 }
 
 function loadInvites(){
@@ -336,7 +357,7 @@ loadInvites();
 
 // Automatisches Session-Cleanup alle 10 Minuten
 if (process.env.NODE_ENV !== "test") {
-  setInterval(() => {
+  const timer = setInterval(() => {
     const now = Date.now();
     let cleaned = 0;
     for (const token of Object.keys(sessions)) {
@@ -349,6 +370,7 @@ if (process.env.NODE_ENV !== "test") {
       console.log(`[session-cleanup] Removed ${cleaned} expired sessions`);
     }
   }, 10 * 60 * 1000);
+  if (typeof timer.unref === "function") timer.unref();
 }
 
 /** Hilfsfunktionen */
@@ -517,15 +539,10 @@ app.post("/api/register", ensureHttps, loginLimiter, doubleCsrfProtection, (req,
 app.post("/api/login", ensureHttps, loginLimiter, doubleCsrfProtection, (req, res) => {
   const { username, password } = req.body || {};
 
-  if (username === "admin" && (!users.admin || typeof users.admin !== "object")) {
-    const allowPersist = fs.existsSync(USERS_FILE);
-    ensureDefaultAdmin({ allowPersist });
-  }
-
-  // Timing-safe: immer Hash berechnen, auch wenn User nicht existiert
-  const user = users[username];
+  const allowPersist = fs.existsSync(USERS_FILE);
+  let user = getUserRecord(username, { allowPersist });
   const dummySalt = "0000000000000000";
-  const actualSalt = user ? user.salt : dummySalt;
+  const actualSalt = user && typeof user.salt === "string" ? user.salt : dummySalt;
 
   // Timing-safe comparison
   const providedHash = hashPassword(password || "", actualSalt);
@@ -535,7 +552,21 @@ app.post("/api/login", ensureHttps, loginLimiter, doubleCsrfProtection, (req, re
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  if (!verifyPassword(user, password)) {
+  let passwordValid = false;
+  try {
+    passwordValid = verifyPassword(user, password);
+  } catch (err) {
+    if (username === "admin") {
+      ensureDefaultAdmin({ allowPersist });
+      user = users.admin;
+      passwordValid = verifyPassword(user, password);
+    } else {
+      console.warn(`[auth] Failed to verify password for '${username}': ${err.message}`);
+      passwordValid = false;
+    }
+  }
+
+  if (!passwordValid) {
     auditLog("login_failed", { username, reason: "wrong_password", ip: req.ip });
     return res.status(401).json({ error: "Invalid credentials" });
   }

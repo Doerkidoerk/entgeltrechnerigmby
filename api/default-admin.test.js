@@ -78,3 +78,36 @@ test('repairs default admin password when stored hash is invalid', async () => {
   expect(res.status).toBe(200);
   expect(res.body.mustChangePassword).toBe(true);
 });
+
+test('default admin login works with CSRF in production mode', async () => {
+  if (fs.existsSync(USERS_FILE)) {
+    fs.unlinkSync(USERS_FILE);
+  }
+
+  const originalEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = 'production';
+    jest.resetModules();
+    const app = require('./server');
+    const agent = request.agent(app);
+
+    const csrf = await agent.get('/api/csrf-token');
+    expect(csrf.status).toBe(200);
+    const token = csrf.body.token;
+    expect(typeof token).toBe('string');
+    const cookieHeader = (csrf.headers['set-cookie'] || []).find(c => /^__Host-csrf=/.test(c));
+    expect(cookieHeader).toBeDefined();
+
+    const res = await agent
+      .post('/api/login')
+      .set('X-Forwarded-Proto', 'https')
+      .set('Cookie', cookieHeader.split(';')[0])
+      .set('X-CSRF-Token', token)
+      .send({ username: 'admin', password: 'Admin123!Test' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mustChangePassword).toBe(true);
+  } finally {
+    process.env.NODE_ENV = originalEnv;
+  }
+});
