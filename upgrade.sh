@@ -21,6 +21,8 @@ SERVICE_NAME="entgeltrechner"
 DATA_DIR="${APP_DIR}/api/data"
 ENV_FILE="/opt/entgeltrechner/.env"
 NVM_DIR="/opt/entgeltrechner/.nvm"
+DEFAULT_BRANCH="main"
+TARGET_BRANCH=""
 
 # Farben für Output
 RED='\033[0;31m'
@@ -87,6 +89,55 @@ check_prerequisites() {
     success "Voraussetzungen erfüllt"
 }
 
+select_branch() {
+    log "Wähle Git-Branch für Update..."
+
+    cd "$APP_DIR"
+
+    local current_branch
+    current_branch=$(sudo -u "$APP_USER" git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+    local remote_branches
+    remote_branches=$(sudo -u "$APP_USER" git ls-remote --heads origin 2>/dev/null | awk '{print $2}' | sed 's@refs/heads/@@' | sort)
+
+    local default_branch="$current_branch"
+    if [ "$default_branch" = "HEAD" ] || [ -z "$default_branch" ]; then
+        if echo "$remote_branches" | grep -qx "main"; then
+            default_branch="main"
+        elif echo "$remote_branches" | grep -qx "master"; then
+            default_branch="master"
+        elif [ -n "$remote_branches" ]; then
+            default_branch=$(echo "$remote_branches" | head -n1)
+        else
+            default_branch="$DEFAULT_BRANCH"
+        fi
+    fi
+
+    if [ -n "$remote_branches" ]; then
+        echo ""
+        log "Verfügbare Remote-Branches:"
+        echo "$remote_branches" | sed 's/^/  /'
+        echo ""
+    fi
+
+    local input
+    read -r -p "Branch für Update [${default_branch}]: " input
+    TARGET_BRANCH="${input:-$default_branch}"
+    TARGET_BRANCH=$(echo "$TARGET_BRANCH" | xargs)
+
+    if [ -z "$TARGET_BRANCH" ]; then
+        error "Kein Branch angegeben"
+    fi
+
+    if ! echo "$remote_branches" | grep -qx "$TARGET_BRANCH"; then
+        if ! sudo -u "$APP_USER" git ls-remote --heads origin "$TARGET_BRANCH" >/dev/null; then
+            error "Remote-Branch 'origin/${TARGET_BRANCH}' nicht gefunden"
+        fi
+    fi
+
+    success "Nutze Branch '${TARGET_BRANCH}'"
+}
+
 create_backup() {
     log "Erstelle Backup..."
 
@@ -128,19 +179,31 @@ check_remote_updates() {
 
     cd "$APP_DIR"
 
-    # Fetch remote changes (als app-user)
-    sudo -u "$APP_USER" git fetch origin 2>&1 || error "Git fetch fehlgeschlagen"
+    sudo -u "$APP_USER" git fetch origin "$TARGET_BRANCH" 2>&1 || error "Git fetch fehlgeschlagen"
 
-    LOCAL=$(sudo -u "$APP_USER" git rev-parse @)
-    REMOTE=$(sudo -u "$APP_USER" git rev-parse @{u} 2>/dev/null || echo "")
-
-    if [ -z "$REMOTE" ]; then
-        warning "Kein Remote-Branch konfiguriert"
-        return 1
+    local local_commit=""
+    if sudo -u "$APP_USER" git rev-parse --verify --quiet "refs/heads/${TARGET_BRANCH}" >/dev/null; then
+        local_commit=$(sudo -u "$APP_USER" git rev-parse "refs/heads/${TARGET_BRANCH}")
     fi
 
-    if [ "$LOCAL" = "$REMOTE" ]; then
-        success "Repository ist bereits aktuell"
+    local remote_commit=""
+    remote_commit=$(sudo -u "$APP_USER" git rev-parse "origin/${TARGET_BRANCH}" 2>/dev/null || echo "")
+
+    if [ -z "$remote_commit" ]; then
+        error "Remote-Branch 'origin/${TARGET_BRANCH}' konnte nicht ermittelt werden"
+    fi
+
+    if [ -z "$local_commit" ]; then
+        warning "Lokaler Branch '${TARGET_BRANCH}' existiert nicht. Er wird beim Update angelegt."
+        echo ""
+        log "Letzte Commits auf origin/${TARGET_BRANCH}:"
+        sudo -u "$APP_USER" git log --oneline --decorate --max-count 5 "origin/${TARGET_BRANCH}"
+        echo ""
+        return 0
+    fi
+
+    if [ "$local_commit" = "$remote_commit" ]; then
+        success "Branch '${TARGET_BRANCH}' ist bereits aktuell"
         echo ""
         echo "Trotzdem fortfahren? (j/N): "
         read -r -n 1 REPLY
@@ -149,10 +212,9 @@ check_remote_updates() {
             exit 0
         fi
     else
-        # Zeige Änderungen
         echo ""
         log "Verfügbare Updates:"
-        sudo -u "$APP_USER" git log --oneline --decorate "$LOCAL..$REMOTE"
+        sudo -u "$APP_USER" git log --oneline --decorate "${local_commit}..origin/${TARGET_BRANCH}"
         echo ""
     fi
 }
@@ -209,10 +271,19 @@ update_code() {
         fi
     fi
 
-    # Pull durchführen (als app-user)
-    sudo -u "$APP_USER" git pull origin main || \
-    sudo -u "$APP_USER" git pull origin master || \
-    error "Git pull fehlgeschlagen"
+    sudo -u "$APP_USER" git fetch origin "$TARGET_BRANCH" 2>&1 || error "Git fetch fehlgeschlagen"
+
+    if ! sudo -u "$APP_USER" git rev-parse --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}" >/dev/null; then
+        error "Remote-Branch 'origin/${TARGET_BRANCH}' nicht verfügbar"
+    fi
+
+    if sudo -u "$APP_USER" git rev-parse --verify --quiet "refs/heads/${TARGET_BRANCH}" >/dev/null; then
+        sudo -u "$APP_USER" git checkout "$TARGET_BRANCH" || error "Git checkout fehlgeschlagen"
+    else
+        sudo -u "$APP_USER" git checkout -b "$TARGET_BRANCH" "origin/${TARGET_BRANCH}" || error "Git checkout fehlgeschlagen"
+    fi
+
+    sudo -u "$APP_USER" git pull --ff-only origin "$TARGET_BRANCH" || error "Git pull fehlgeschlagen"
 
     NEW_COMMIT=$(sudo -u "$APP_USER" git rev-parse HEAD)
     success "Code aktualisiert auf Commit: ${NEW_COMMIT:0:8}"
@@ -260,6 +331,11 @@ check_permissions() {
             chmod 640 "$file"
             chown "${APP_USER}:${APP_USER}" "$file"
         done
+    fi
+
+    if [ -d "${DATA_DIR}/sessions" ]; then
+        chmod 700 "${DATA_DIR}/sessions"
+        chown -R "${APP_USER}:${APP_USER}" "${DATA_DIR}/sessions"
     fi
 
     if [ -f "$ENV_FILE" ]; then
@@ -376,6 +452,7 @@ main() {
 
     check_user
     check_prerequisites
+    select_branch
     check_remote_updates
     confirm_update
     create_backup

@@ -12,6 +12,32 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
+## [2.0.0] - 2025-10-10
+
+### Hinzugefügt
+- Wieder eingeführte Benutzer- und Rollenverwaltung mit Session-basiertem Login.
+- Admin-Oberfläche im Frontend für Benutzer, Einladungen, Passwort-Resets und Sperren.
+- Einladungscodes mit optionaler Ablaufzeit zur Self-Service-Registrierung.
+- CSRF-Schutz für alle mutierenden API-Aufrufe und Login-Lockout nach wiederholten Fehlversuchen.
+- Passwortwechsel-Funktion für angemeldete Benutzer, inklusive Must-Change-Anzeige.
+
+### Geändert
+- Frontend zeigt nach Login den Rechner und blendet administrative Funktionen nur für Admins ein.
+- `upgrade.sh` setzt Berechtigungen für `users.json`, `invites.json` sowie das Session-Verzeichnis.
+- Dokumentation (README, INSTALL, SECURITY) auf authentifizierte Nutzung aktualisiert.
+
+### Sicherheit
+- Aktivierte `express-session` mit strikt konfigurierten Cookies und Rolling Sessions.
+- Bcrypt-Hashing und Passwort-Policy (≥12 Zeichen, komplexe Zusammensetzung).
+
+### Migration von v1.13.x → v2.0.0
+1. `.env` um `SESSION_SECRET` (Pflicht) sowie ggf. `DEFAULT_ADMIN_PASSWORD` und `SESSION_TTL_MS` ergänzen.
+2. Service stoppen, `npm install` im Ordner `api/` ausführen (neue Dependencies).
+3. `upgrade.sh` einmal laufen lassen, damit Berechtigungen und Backups aktualisiert werden.
+4. Nach dem Start mit dem Admin anmelden und das Passwort sofort ändern.
+
+---
+
 ## [1.13.0] - 2025-10-10
 
 ### Entfernt
@@ -114,6 +140,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
-[Unreleased]: https://github.com/Doerkidoerk/entgeltrechnerigmby/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/Doerkidoerk/entgeltrechnerigmby/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Doerkidoerk/entgeltrechnerigmby/releases/tag/v2.0.0
 [1.13.0]: https://github.com/Doerkidoerk/entgeltrechnerigmby/releases/tag/v1.13.0
 [1.12.0]: https://github.com/Doerkidoerk/entgeltrechnerigmby/releases/tag/v1.12.0

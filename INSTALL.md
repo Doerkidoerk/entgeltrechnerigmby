@@ -1,6 +1,6 @@
 # Installationsanleitung
 
-Diese Anleitung beschreibt die empfohlene Produktionsinstallation des öffentlichen Entgeltrechners (Version 1.13) auf einer Debian-/Ubuntu-Serverumgebung. Alle Schritte setzen `root`-Rechte voraus.
+Diese Anleitung beschreibt die empfohlene Produktionsinstallation des authentifizierten Entgeltrechners (Version 2.0) auf einer Debian-/Ubuntu-Serverumgebung. Alle Schritte setzen `root`-Rechte voraus.
 
 ---
 
@@ -73,9 +73,14 @@ Erstelle `/opt/entgeltrechner/.env` mit folgendem Inhalt und passe Werte an:
 NODE_ENV=production
 PORT=3001
 ALLOWED_ORIGINS=https://entgeltrechner.example.com
+SESSION_SECRET=$(openssl rand -hex 48)
+# Optional: Standard-Passwort des initialen Admins überschreiben
+# DEFAULT_ADMIN_PASSWORD=IhrSehrSicheresPasswort123!
+# Optional: Sitzungsdauer in Millisekunden (Standard 1800000 = 30 Min)
+# SESSION_TTL_MS=1800000
 ```
 
-Weitere Variablen sind nicht erforderlich, da keine Authentifizierung oder Sessions mehr existieren.
+`SESSION_SECRET` ist zwingend erforderlich und sollte ein ausreichend langer, zufälliger Wert sein. Ohne diesen Wert werden Sessions verworfen.
 
 ---
 
@@ -109,6 +114,8 @@ systemctl enable --now entgeltrechner.service
 ```
 
 Der Health-Check ist unter `http://127.0.0.1:3001/api/health` erreichbar.
+
+Nach dem ersten erfolgreichen Start legt die Anwendung automatisch den Administrator `admin` an. Das anfängliche Passwort lautet `Admin123!Test` oder – sofern gesetzt – der Wert aus `DEFAULT_ADMIN_PASSWORD`. Melden Sie sich umgehend an und ändern Sie das Passwort über den Menüpunkt **Account‑Sicherheit**.
 
 ---
 
@@ -149,9 +156,9 @@ TLS lässt sich mit [Certbot](https://certbot.eff.org/) ergänzen.
 
 ## 7. Backups
 
-- Tariftabellen liegen in `/opt/entgeltrechner/app/api/data/*.json`
-- Vor Updates das beiliegende `upgrade.sh` ausführen, es erstellt automatisch Backups
-- Backups regelmäßig an einen sicheren Ort kopieren
+- Alle persistenten Daten liegen unter `/opt/entgeltrechner/app/api/data/` (Tariftabellen, `users.json`, `invites.json`, `sessions/`).
+- Vor Updates das beiliegende `upgrade.sh` ausführen, es erstellt automatisch Backups.
+- Backups regelmäßig an einen sicheren Ort kopieren und insbesondere `users.json` vertraulich behandeln.
 
 ---
 
@@ -169,6 +176,7 @@ sudo ./upgrade.sh
 ```
 
 Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installiert Abhängigkeiten und startet die Anwendung neu. Es erwartet keine Benutzer- oder Einladungstabellen mehr.
+Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installiert Abhängigkeiten und startet die Anwendung neu. Benutzer- und Einladungstabellen (`users.json`, `invites.json`) werden dabei automatisch mitgesichert.
 
 ---
 
@@ -180,6 +188,7 @@ Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installi
 | Kein Zugriff auf `/api` | Prüfen, ob Service auf Port 3001 läuft und nginx-Konfiguration korrekt ist |
 | Rate-Limit greift zu früh | `ALLOWED_ORIGINS` prüfen und ggf. zusätzliche Proxies berücksichtigen |
 | Falsche Tabellenwerte | JSON-Dateien in `api/data` kontrollieren |
+| Anmeldung nicht möglich | `SESSION_SECRET` gesetzt? Browser-Cookies löschen, Logs von API & nginx prüfen |
 
 ---
 
@@ -199,4 +208,3 @@ npx serve -l 8080
 ```
 
 Der Rechner ist anschließend unter `http://localhost:8080` verfügbar und ruft die API unter `http://127.0.0.1:3001` auf.
-

@@ -1,36 +1,52 @@
-const APP_VERSION = "1.11";
+const APP_VERSION = "2.0";
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
-    const els = {
-      tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
-      stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
-      irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
-      leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
-      uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
-      betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
-      status: $("status"), azubiHint: $("azubiHint"),
-      irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
-      result: $("result"),
-      resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
-      compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
-      cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
-      cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
-      atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
-      atResult: $("atCompareResult"),
-      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
-    };
+  const els = {
+    tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
+    stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
+    irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
+    leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
+    uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
+    betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
+    status: $("status"), azubiHint: $("azubiHint"),
+    irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
+    result: $("result"),
+    resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
+    compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
+    cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
+    cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
+    atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
+    atResult: $("atCompareResult"),
+    appRoot: $("app"),
+    themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion"),
+    authView: $("authView"), authTitle: $("authTitle"), authError: $("authError"),
+    loginForm: $("loginForm"), loginUsername: $("loginUsername"), loginPassword: $("loginPassword"),
+    registerForm: $("registerForm"), registerUsername: $("registerUsername"), registerPassword: $("registerPassword"), registerCode: $("registerCode"),
+    showRegister: $("showRegister"), showLogin: $("showLogin"),
+    userControls: $("userControls"), userBadge: $("userBadge"), logoutBtn: $("logoutBtn"), accountBtn: $("accountBtn"),
+    accountPanel: $("accountPanel"), passwordForm: $("passwordForm"), currentPassword: $("currentPassword"), newPassword: $("newPassword"), passwordCancel: $("passwordCancel"), passwordMessage: $("passwordMessage"),
+    adminPanel: $("adminPanel"), adminRefreshBtn: $("adminRefreshBtn"), adminMessage: $("adminMessage"),
+    userCreateForm: $("userCreateForm"), userCreateName: $("userCreateName"), userCreatePassword: $("userCreatePassword"), userCreateRole: $("userCreateRole"), userCreateMustChange: $("userCreateMustChange"),
+    userTableBody: $("userTableBody"),
+    inviteForm: $("inviteForm"), inviteRole: $("inviteRole"), inviteExpires: $("inviteExpires"), inviteNote: $("inviteNote"), inviteTableBody: $("inviteTableBody")
+  };
 
   els.version.textContent = APP_VERSION;
 
-    const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
-    const fmtPct = n => Number(n).toFixed(2) + " %";
-    const fmtHours = n => Number(n).toFixed(1) + " h";
-    let atMin = {};
-    let currentTable = {};
-    let lastTotals = null;
+  const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+  const fmtPct = n => Number(n).toFixed(2) + " %";
+  const fmtHours = n => Number(n).toFixed(1) + " h";
+  let atMin = {};
+  let currentTable = {};
+  let lastTotals = null;
+  let csrfToken = null;
+  let currentUser = null;
+  let calculatorReady = false;
+  let adminUsers = [];
+  let adminInvites = [];
 
   // Helpers
   function setStatus(text, cls){ els.status.textContent = text; els.status.className = `pill ${cls||""}`.trim(); }
@@ -75,22 +91,130 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   })();
 
+  els.loginForm?.addEventListener("submit", handleLoginSubmit);
+  els.registerForm?.addEventListener("submit", handleRegisterSubmit);
+  els.showRegister?.addEventListener("click", () => switchAuthMode("register"));
+  els.showLogin?.addEventListener("click", () => switchAuthMode("login"));
+  els.logoutBtn?.addEventListener("click", handleLogoutClick);
+  els.accountBtn?.addEventListener("click", () => toggleAccountPanel());
+  els.passwordCancel?.addEventListener("click", () => toggleAccountPanel(false));
+  els.passwordForm?.addEventListener("submit", handlePasswordSubmit);
+  els.adminRefreshBtn?.addEventListener("click", loadAdminData);
+  els.userCreateForm?.addEventListener("submit", handleUserCreate);
+  els.inviteForm?.addEventListener("submit", handleInviteCreate);
+  els.userTableBody?.addEventListener("click", handleUserTableClick);
+  els.inviteTableBody?.addEventListener("click", handleInviteTableClick);
+  switchAuthMode("login");
+
   async function fetchJSON(url, opts = {}) {
+    const options = { ...opts };
+    options.method = (options.method || "GET").toUpperCase();
+    options.credentials = "include";
+
     const headers = {
       "Accept": "application/json",
-      ...(opts.headers || {})
+      ...(options.headers || {})
     };
 
-    const r = await fetch(url, {
-      ...opts,
-      headers
-    });
-    if (!r.ok) {
-      let msg = `${r.status} ${r.statusText}`;
-      try { const e = await r.json(); msg = e.error || msg; } catch {}
-      throw new Error(msg);
+    if (options.body && !(options.body instanceof FormData) && typeof options.body === "object") {
+      if (!headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+      if (headers["Content-Type"].includes("application/json")) {
+        options.body = JSON.stringify(options.body);
+      }
     }
-    return r.json();
+
+    if (!("headers" in options) || options.headers !== headers) {
+      options.headers = headers;
+    }
+
+    if (!["GET", "HEAD", "OPTIONS"].includes(options.method)) {
+      try {
+        const token = await ensureCsrfToken();
+        headers["X-CSRF-Token"] = token;
+      } catch (err) {
+        console.error("CSRF Token fehlgeschlagen", err);
+      }
+    }
+
+    let response;
+    try {
+      response = await fetch(url, options);
+    } catch (error) {
+      throw new Error("Netzwerkfehler: " + error.message);
+    }
+
+    let payload = null;
+    if (response.status !== 204) {
+      try {
+        payload = await response.json();
+      } catch (error) {
+        if (response.ok) {
+          payload = null;
+        }
+      }
+    }
+
+    if (response.status === 401) {
+      handleUnauthenticated();
+      throw new Error(payload?.error || "Anmeldung erforderlich.");
+    }
+
+    if (!response.ok) {
+      const message = payload?.error || `${response.status} ${response.statusText}`;
+      const err = new Error(message);
+      err.status = response.status;
+      err.payload = payload;
+      throw err;
+    }
+
+    return payload;
+  }
+
+  async function ensureCsrfToken(force = false) {
+    if (!force && csrfToken) {
+      return csrfToken;
+    }
+    try {
+      const res = await fetch("/api/auth/csrf", { credentials: "include" });
+      if (!res.ok) {
+        throw new Error(`${res.status} ${res.statusText}`);
+      }
+      const data = await res.json();
+      csrfToken = data?.csrfToken || null;
+    } catch (err) {
+      csrfToken = null;
+      console.error("CSRF-Anforderung fehlgeschlagen", err);
+      throw err;
+    }
+    return csrfToken;
+  }
+
+  function handleUnauthenticated() {
+    currentUser = null;
+    calculatorReady = false;
+    adminUsers = [];
+    adminInvites = [];
+    els.appRoot?.classList.add("hidden");
+    els.accountPanel?.classList.add("hidden");
+    els.adminPanel?.classList.add("hidden");
+    els.authView?.classList.remove("hidden");
+    els.userControls?.classList.add("hidden");
+    setStatus("Nicht angemeldet", "err");
+    switchAuthMode("login");
+  }
+
+  function updateUserBadge() {
+    if (!currentUser) {
+      els.userBadge.textContent = "Nicht angemeldet";
+      els.userBadge.className = "pill muted";
+      return;
+    }
+    const roleLabel = currentUser.role === "admin" ? "Administrator" : "Benutzer";
+    els.userBadge.textContent = `${currentUser.username} · ${roleLabel}`;
+    const cls = currentUser.role === "admin" ? "pill ok" : "pill";
+    els.userBadge.className = cls;
   }
 
   function formatTariffDate(k){
@@ -102,8 +226,416 @@ document.addEventListener("DOMContentLoaded", () => {
     return map[k] || k;
   }
 
+  function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  }
+
+  function formatTimestamp(value) {
+    if (!value) return "–";
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "–";
+      return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+    } catch {
+      return "–";
+    }
+  }
+
+  function switchAuthMode(mode) {
+    const isRegister = mode === "register";
+    els.authTitle.textContent = isRegister ? "Registrierung" : "Anmeldung";
+    els.loginForm.classList.toggle("hidden", isRegister);
+    els.registerForm.classList.toggle("hidden", !isRegister);
+    els.showRegister.classList.toggle("hidden", isRegister);
+    els.showLogin.classList.toggle("hidden", !isRegister);
+    els.authError.classList.add("hidden");
+    if (isRegister) {
+      els.registerUsername.focus();
+    } else {
+      els.loginUsername.focus();
+    }
+  }
+
+  function resetAuthForms() {
+    els.loginForm.reset();
+    els.registerForm.reset();
+    els.authError.classList.add("hidden");
+  }
+
+  async function handleLoginSubmit(event) {
+    event.preventDefault();
+    const username = els.loginUsername.value.trim();
+    const password = els.loginPassword.value;
+    if (!username || !password) {
+      els.authError.textContent = "Bitte Benutzername und Passwort eingeben.";
+      els.authError.classList.remove("hidden");
+      return;
+    }
+    try {
+      const data = await fetchJSON("/api/auth/login", {
+        method: "POST",
+        body: { username, password }
+      });
+      els.authError.classList.add("hidden");
+      els.loginPassword.value = "";
+      currentUser = data?.user || null;
+      await ensureCsrfToken(true);
+      resetAuthForms();
+      await showApp();
+      toast(`Angemeldet als ${currentUser.username}`);
+    } catch (err) {
+      els.authError.textContent = err.message || "Anmeldung fehlgeschlagen.";
+      els.authError.classList.remove("hidden");
+      setStatus("Anmeldung fehlgeschlagen", "err");
+    }
+  }
+
+  async function handleRegisterSubmit(event) {
+    event.preventDefault();
+    const username = els.registerUsername.value.trim();
+    const password = els.registerPassword.value;
+    const inviteCode = els.registerCode.value.trim();
+    if (!username || !password || !inviteCode) {
+      els.authError.textContent = "Bitte alle Felder ausfüllen.";
+      els.authError.classList.remove("hidden");
+      return;
+    }
+    try {
+      const data = await fetchJSON("/api/auth/register", {
+        method: "POST",
+        body: { username, password, inviteCode }
+      });
+      els.authError.classList.add("hidden");
+      currentUser = data?.user || null;
+      await ensureCsrfToken(true);
+      resetAuthForms();
+      await showApp();
+      toast(`Willkommen ${currentUser.username}!`);
+    } catch (err) {
+      els.authError.textContent = err.message || "Registrierung fehlgeschlagen.";
+      els.authError.classList.remove("hidden");
+      setStatus("Registrierung fehlgeschlagen", "err");
+    }
+  }
+
+  async function handleLogoutClick() {
+    try {
+      await fetchJSON("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.warn("Logout-Fehler", err);
+    }
+    await ensureCsrfToken(true).catch(() => {});
+    resetAuthForms();
+    handleUnauthenticated();
+    toast("Abgemeldet.");
+  }
+
+  function toggleAccountPanel(show) {
+    const shouldShow = typeof show === "boolean" ? show : els.accountPanel.classList.contains("hidden");
+    if (shouldShow) {
+      els.accountPanel.classList.remove("hidden");
+      els.currentPassword?.focus();
+    } else {
+      els.accountPanel.classList.add("hidden");
+      els.passwordForm.reset();
+      els.passwordMessage.textContent = "";
+      els.passwordMessage.className = "small muted";
+    }
+  }
+
+  async function handlePasswordSubmit(event) {
+    event.preventDefault();
+    const currentPassword = els.currentPassword?.value || "";
+    const newPassword = els.newPassword?.value || "";
+    if (!currentPassword || !newPassword) {
+      els.passwordMessage.textContent = "Bitte beide Felder ausfüllen.";
+      els.passwordMessage.className = "small error-text";
+      return;
+    }
+    try {
+      await fetchJSON("/api/auth/change-password", {
+        method: "POST",
+        body: { currentPassword, newPassword }
+      });
+      els.passwordMessage.textContent = "Passwort aktualisiert.";
+      els.passwordMessage.className = "small ok-text";
+      els.passwordForm.reset();
+      await ensureCsrfToken(true);
+      toast("Passwort geändert.");
+      if (currentUser) {
+        currentUser.mustChangePassword = false;
+      }
+    } catch (err) {
+      els.passwordMessage.textContent = err.message || "Aktualisierung fehlgeschlagen.";
+      els.passwordMessage.className = "small error-text";
+    }
+  }
+
+  async function refreshSession() {
+    try {
+      const data = await fetchJSON("/api/auth/session");
+      if (data?.authenticated) {
+        currentUser = data.user;
+        await showApp();
+        return;
+      }
+    } catch (err) {
+      console.warn("Session-Check fehlgeschlagen", err);
+    }
+    handleUnauthenticated();
+  }
+
+  async function showApp() {
+    if (!currentUser) {
+      handleUnauthenticated();
+      return;
+    }
+    els.authView.classList.add("hidden");
+    els.appRoot.classList.remove("hidden");
+    els.userControls.classList.remove("hidden");
+    updateUserBadge();
+    toggleAccountPanel(false);
+    setStatus("Angemeldet", "ok");
+    if (!calculatorReady) {
+      await initCalculator();
+      calculatorReady = true;
+    } else {
+      await loadEGs();
+      calculate();
+    }
+    setStatus("Angemeldet", "ok");
+    if (currentUser.mustChangePassword) {
+      toggleAccountPanel(true);
+      toast("Bitte Passwort aktualisieren.");
+    }
+    if (currentUser.role === "admin") {
+      els.adminPanel.classList.remove("hidden");
+      await loadAdminData();
+    } else {
+      els.adminPanel.classList.add("hidden");
+    }
+  }
+
+  function setAdminMessage(text, variant = "muted") {
+    if (!els.adminMessage) return;
+    els.adminMessage.textContent = text || "";
+    els.adminMessage.className = `small ${variant === "error" ? "error-text" : "muted"}`;
+  }
+
+  async function loadAdminData() {
+    if (!currentUser || currentUser.role !== "admin") return;
+    try {
+      setAdminMessage("Lade Daten…", "muted");
+      const [usersRes, invitesRes] = await Promise.all([
+        fetchJSON("/api/admin/users"),
+        fetchJSON("/api/admin/invites")
+      ]);
+      adminUsers = Array.isArray(usersRes?.users) ? usersRes.users : [];
+      adminInvites = Array.isArray(invitesRes?.invites) ? invitesRes.invites : [];
+      renderUserTable(adminUsers);
+      renderInviteTable(adminInvites);
+      setAdminMessage(`Aktualisiert: ${new Date().toLocaleTimeString("de-DE")}`);
+    } catch (err) {
+      console.error("Admin laden fehlgeschlagen", err);
+      setAdminMessage(err.message || "Fehler beim Laden", "error");
+    }
+  }
+
+  function renderUserTable(users) {
+    if (!els.userTableBody) return;
+    els.userTableBody.innerHTML = users.map(user => {
+      const roleTag = `<span class="tag ${user.role === "admin" ? "ok" : "info"}">${escapeHtml(user.role)}</span>`;
+      const locked = user.locked ? "Gesperrt" : "Aktiv";
+      const statusFragments = [];
+      statusFragments.push(`<span class="tag ${user.locked ? "err" : "ok"}">${locked}</span>`);
+      if (user.mustChangePassword) {
+        statusFragments.push('<span class="tag info">Passwortwechsel erforderlich</span>');
+      }
+      const actions = [];
+      const isSelf = currentUser && user.id === currentUser.id;
+      actions.push(`<button type="button" class="btn ghost admin-action" data-action="toggle-lock" ${isSelf ? "disabled" : ""}>${user.locked ? "Entsperren" : "Sperren"}</button>`);
+      actions.push(`<button type="button" class="btn ghost admin-action" data-action="toggle-role" ${isSelf ? "disabled" : ""}>${user.role === "admin" ? "Zu Benutzer" : "Zu Admin"}</button>`);
+      actions.push(`<button type="button" class="btn ghost admin-action" data-action="reset-password">Passwort zurücksetzen</button>`);
+      actions.push(`<button type="button" class="btn ghost admin-action" data-action="delete" ${isSelf ? "disabled" : ""}>Löschen</button>`);
+      return `<tr data-user-id="${escapeHtml(user.id)}">
+        <td>${escapeHtml(user.username)}</td>
+        <td>${roleTag}</td>
+        <td>${statusFragments.join(" ")}</td>
+        <td>${formatTimestamp(user.lastLoginAt)}</td>
+        <td class="actions">${actions.join("")}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderInviteTable(invites) {
+    if (!els.inviteTableBody) return;
+    els.inviteTableBody.innerHTML = invites.map(inv => {
+      const isUsed = Boolean(inv.usedAt);
+      const isExpired = Boolean(inv.expired);
+      let status = "Aktiv";
+      let statusClass = "tag ok";
+      if (isUsed) {
+        status = inv.usedBy ? `Verwendet (${escapeHtml(inv.usedBy)})` : "Verwendet";
+        statusClass = "tag info";
+      } else if (isExpired) {
+        status = "Abgelaufen";
+        statusClass = "tag err";
+      }
+      const actions = [];
+      actions.push(`<button type="button" class="btn ghost admin-invite" data-action="copy">Kopieren</button>`);
+      actions.push(`<button type="button" class="btn ghost admin-invite" data-action="delete">Löschen</button>`);
+      return `<tr data-invite-code="${escapeHtml(inv.code)}">
+        <td><code>${escapeHtml(inv.code)}</code></td>
+        <td><span class="tag info">${escapeHtml(inv.role)}</span></td>
+        <td>${inv.expiresAt ? formatTimestamp(inv.expiresAt) : "Ohne Ablauf"}</td>
+        <td><span class="${statusClass}">${status}</span></td>
+        <td class="actions">${actions.join("")}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function handleUserCreate(event) {
+    event.preventDefault();
+    if (!currentUser || currentUser.role !== "admin") return;
+    const username = els.userCreateName.value.trim();
+    const password = els.userCreatePassword.value;
+    const role = els.userCreateRole.value;
+    const mustChangePassword = Boolean(els.userCreateMustChange.checked);
+    if (!username || !password) {
+      setAdminMessage("Benutzername und Passwort erforderlich.", "error");
+      return;
+    }
+    try {
+      await fetchJSON("/api/admin/users", {
+        method: "POST",
+        body: { username, password, role, mustChangePassword }
+      });
+      els.userCreateForm.reset();
+      setAdminMessage(`Benutzer ${username} angelegt.`);
+      await loadAdminData();
+    } catch (err) {
+      console.error("Benutzer anlegen fehlgeschlagen", err);
+      setAdminMessage(err.message || "Anlegen fehlgeschlagen", "error");
+    }
+  }
+
+  async function handleInviteCreate(event) {
+    event.preventDefault();
+    if (!currentUser || currentUser.role !== "admin") return;
+    const role = els.inviteRole.value;
+    const expires = Number(els.inviteExpires.value) || 72;
+    const note = els.inviteNote.value.trim();
+    try {
+      const invite = await fetchJSON("/api/admin/invites", {
+        method: "POST",
+        body: { role, expiresInHours: expires, note }
+      });
+      const code = invite?.invite?.code;
+      if (code) {
+        try { await navigator.clipboard.writeText(code); toast("Einladungscode kopiert."); }
+        catch { /* ignore clipboard errors */ }
+      }
+      els.inviteForm.reset();
+      els.inviteExpires.value = expires;
+      setAdminMessage(code ? `Einladung erstellt: ${code}` : "Einladung erstellt.");
+      await loadAdminData();
+    } catch (err) {
+      console.error("Einladung erstellen fehlgeschlagen", err);
+      setAdminMessage(err.message || "Erstellung fehlgeschlagen", "error");
+    }
+  }
+
+  async function handleUserTableClick(event) {
+    const button = event.target.closest(".admin-action");
+    if (!button) return;
+    const row = button.closest("tr");
+    const userId = row?.dataset?.userId;
+    const action = button.dataset.action;
+    if (!userId || !action) return;
+
+    const user = adminUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    try {
+      switch (action) {
+        case "toggle-lock":
+          await fetchJSON(`/api/admin/users/${encodeURIComponent(userId)}`, {
+            method: "PATCH",
+            body: { locked: !user.locked }
+          });
+          setAdminMessage(`Benutzer ${user.username} ${user.locked ? "entsperrt" : "gesperrt"}.`);
+          break;
+        case "toggle-role":
+          await fetchJSON(`/api/admin/users/${encodeURIComponent(userId)}`, {
+            method: "PATCH",
+            body: { role: user.role === "admin" ? "user" : "admin" }
+          });
+          setAdminMessage(`Rolle von ${user.username} aktualisiert.`);
+          break;
+        case "reset-password": {
+          const newPassword = window.prompt(`Neues Passwort für ${user.username} eingeben:`);
+          if (!newPassword) return;
+          if (newPassword.length < 12) {
+            alert("Das Passwort muss mindestens 12 Zeichen haben.");
+            return;
+          }
+          await fetchJSON(`/api/admin/users/${encodeURIComponent(userId)}/reset-password`, {
+            method: "POST",
+            body: { newPassword }
+          });
+          setAdminMessage(`Passwort für ${user.username} zurückgesetzt.`, "muted");
+          break;
+        }
+        case "delete":
+          if (!window.confirm(`Benutzer ${user.username} wirklich löschen?`)) return;
+          await fetchJSON(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+          setAdminMessage(`Benutzer ${user.username} gelöscht.`);
+          break;
+        default:
+          return;
+      }
+      await loadAdminData();
+    } catch (err) {
+      console.error("Benutzeraktion fehlgeschlagen", err);
+      setAdminMessage(err.message || "Aktion fehlgeschlagen", "error");
+    }
+  }
+
+  async function handleInviteTableClick(event) {
+    const button = event.target.closest(".admin-invite");
+    if (!button) return;
+    const row = button.closest("tr");
+    const code = row?.dataset?.inviteCode;
+    const action = button.dataset.action;
+    if (!code || !action) return;
+
+    try {
+      if (action === "copy") {
+        try {
+          await navigator.clipboard.writeText(code);
+          toast("Einladungscode kopiert.");
+          setAdminMessage("Code in Zwischenablage.");
+        } catch (error) {
+          window.prompt("Einladungscode kopieren: STRG+C", code);
+          setAdminMessage("Code angezeigt.");
+        }
+        return;
+      }
+      if (action === "delete") {
+        if (!window.confirm("Einladung wirklich löschen?")) return;
+        await fetchJSON(`/api/admin/invites/${encodeURIComponent(code)}`, { method: "DELETE" });
+        setAdminMessage("Einladung entfernt.");
+        await loadAdminData();
+      }
+    } catch (err) {
+      console.error("Einladungsaktion fehlgeschlagen", err);
+      setAdminMessage(err.message || "Aktion fehlgeschlagen", "error");
+    }
+  }
+
+
   // Init
-  async function init(){
+  async function initCalculator(){
     try { await fetchJSON("/api/health"); setStatus("API OK","ok"); }
     catch { setStatus("API down","err"); }
 
@@ -181,9 +713,20 @@ document.addEventListener("DOMContentLoaded", () => {
     calculate();
   }
 
-  init().catch(err => {
-    console.error(err);
-    setStatus("API down", "err");
+  // initCalculator wird erst nach erfolgreicher Anmeldung aufgerufen
+
+  async function bootstrap() {
+    try {
+      await ensureCsrfToken();
+    } catch (err) {
+      console.error("CSRF-Initialisierung fehlgeschlagen", err);
+    }
+    await refreshSession();
+  }
+
+  bootstrap().catch(err => {
+    console.error("Start fehlgeschlagen", err);
+    handleUnauthenticated();
   });
 
     async function loadEGs() {

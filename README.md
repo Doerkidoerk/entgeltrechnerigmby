@@ -1,24 +1,28 @@
 # Entgeltrechner
 
-Version 1.13 – Öffentlicher Rechner ohne Benutzerverwaltung.
+Version 2.0 – Authentifizierter Rechner mit Benutzer- und Einladungsverwaltung.
 
-Eine kleine Webanwendung zur Berechnung des Entgelts nach der IG Metall Tariftabelle für die bayerische Metall- und Elektroindustrie. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die verschiedenen Entgeltsbestandteile übersichtlich dar.
+Eine Webanwendung zur Berechnung des Entgelts nach der IG Metall Tariftabelle für die bayerische Metall- und Elektroindustrie. Aus Eingaben wie Entgeltgruppe, Arbeitszeit, Leistungszulage oder Urlaubstagen ermittelt sie Monats‑ und Jahreswerte und stellt die verschiedenen Entgeltsbestandteile übersichtlich dar. Zugriff auf die Rechnerfunktionen erfordert jetzt eine Anmeldung.
 
 WebApp mit zwei Komponenten:
 
-- **API** (`api/`): Node.js/Express-Server für die Entgeltberechnung.
-- **Frontend** (`frontend/`): statische HTML/CSS/JS-Anwendung, die die API nutzt.
+- **API** (`api/`): Node.js/Express-Server für Entgeltberechnung, Authentifizierung, Benutzerverwaltung und Einladungen.
+- **Frontend** (`frontend/`): statische HTML/CSS/JS-Anwendung mit Login-Flow, Admin-Konsole und Rechner-Oberfläche.
 
 ## 🔒 Sicherheit
 
 **Wichtig:** Siehe [SECURITY.md](./SECURITY.md) für detaillierte Informationen zu allen Sicherheitsfeatures.
 
-Sicherheitsmaßnahmen in der öffentlichen Version:
-- **API-Rate-Limiting:** 100 Requests pro 15 Minuten und IP für alle Endpunkte
-- **CSP & Security-Header:** via Helmet vorkonfiguriert, Schutz vor XSS & MIME-Sniffing
-- **Strikte CORS-Allowlist:** Steuerbar über `ALLOWED_ORIGINS`
-- **Input-Validierung:** Zod-Schemata schützen die Berechnungs-Endpunkte vor ungültigen Eingaben
-- **Request-Logging:** HTTP-Logs mit morgan für Monitoring & Audits
+Sicherheitsmaßnahmen in der authentifizierten Version:
+- **Session-basierte Authentifizierung:** Signierte Cookies (express-session + FileStore) mit strengen Cookie-Flags und Rolling Sessions.
+- **Passworthärtung:** bcrypt-Hashes, starke Passwort-Policy, automatisches Sperren nach wiederholtem Fehlversuch.
+- **Rollen & Einladungen:** Admin-gesteuerte Benutzerverwaltung, einladungsbasierte Selbstregistrierung, getrennte Rollen `admin` und `user`.
+- **CSRF-Schutz:** `csurf` mit per-Request-Token für alle zustandsverändernden Operationen.
+- **API-Rate-Limiting:** 100 Requests pro 15 Minuten und IP für alle Endpunkte.
+- **CSP & Security-Header:** via Helmet vorkonfiguriert; Schutz vor XSS, Clickjacking & MIME-Sniffing.
+- **Strikte Origin-Allowlist:** Steuerbar über `ALLOWED_ORIGINS`.
+- **Input-Validierung:** Zod-Schemata schützen die Berechnungs-Endpunkte vor ungültigen Eingaben.
+- **Request-Logging:** HTTP-Logs mit morgan für Monitoring & Audits.
 
 ## Installation
 
@@ -37,11 +41,19 @@ node server.js
 # 3. Frontend bereitstellen (in neuem Terminal)
 cd ../frontend
 npx serve -l 8080
+# 4. Browser öffnen und mit Benutzer "admin" / "Admin123!Test" anmelden
 ```
 
 Der API-Server läuft unter `http://127.0.0.1:3001`, das Frontend unter `http://localhost:8080`.
 
-Der Rechner ist ohne Anmeldung nutzbar und verwendet ausschließlich die öffentlichen `/api`-Endpunkte.
+Nach dem Start steht ein Standard-Administrator bereit (`admin` / `Admin123!Test`). Bitte direkt anmelden, das Passwort über die Account-Verwaltung ändern und anschließend weitere Benutzer bzw. Einladungen im Admin-Bereich verwalten.
+
+## Benutzer & Einladungen
+
+- Solange keine Benutzerdatei existiert, legt die API beim Start automatisch den Admin `admin` mit dem Kennwort `Admin123!Test` an und erzwingt eine Passwortänderung bei der ersten Anmeldung.
+- Administratoren verwalten Benutzerrollen, Einladungen, Sperren und Passwort-Resets direkt im Frontend.
+- Normale Benutzer haben Zugriff auf den Rechner und können ihr Passwort selbstständig ändern.
+- Neue Konten können ausschließlich über Einladungscodes registriert werden; Einladungen verfallen automatisch nach Ablaufzeit oder nach Nutzung.
 
 ### Produktions-Deployment
 
@@ -64,6 +76,9 @@ Erstellen Sie eine `.env`-Datei oder setzen Sie die folgenden Variablen:
 NODE_ENV=production
 PORT=3001
 ALLOWED_ORIGINS=https://ihredomain.de
+SESSION_SECRET=ein-langer-zufallswert
+# Optional: Admin-Standardpasswort beim Erststart überschreiben
+# DEFAULT_ADMIN_PASSWORD=IhrSicheresPasswort123!
 ```
 
 ## Tests
@@ -110,10 +125,13 @@ entgeltrechnerigmby/
 │   ├── server.js           # Express-Server & API
 │   ├── server.test.js      # Jest-Tests
 │   ├── package.json
-│   └── data/               # Tariftabellen (JSON)
+│   └── data/
 │       ├── mai2024.json
 │       ├── april2025.json
-│       └── april2026.json
+│       ├── april2026.json
+│       ├── users.json      # Benutzer (wird automatisch angelegt)
+│       ├── invites.json    # Einladungscodes (wird automatisch angelegt)
+│       └── sessions/       # Session-Dateien (wird automatisch angelegt)
 ├── frontend/
 │   ├── index.html          # Hauptseite (Rechner)
 │   └── assets/
