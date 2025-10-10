@@ -96,7 +96,6 @@ function loadUsers(){
     users = JSON.parse(buf);
   } catch {
     users = { admin: createAdminRecord() };
-    saveUsers();
   }
   ensureDefaultAdmin();
 }
