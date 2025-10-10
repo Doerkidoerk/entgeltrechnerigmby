@@ -48,7 +48,7 @@ sudo -u entgeltrechner bash <<'INNER'
 set -e
 cd /opt/entgeltrechner
 if [ ! -d app ]; then
-  git clone https://github.com/your-org/entgeltrechnerigmby.git app
+  git clone https://github.com/Doerkidoerk/entgeltrechnerigmby.git app
 else
   cd app
   git pull --ff-only
