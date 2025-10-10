@@ -262,6 +262,11 @@ check_permissions() {
         done
     fi
 
+    if [ -d "${DATA_DIR}/sessions" ]; then
+        chmod 700 "${DATA_DIR}/sessions"
+        chown -R "${APP_USER}:${APP_USER}" "${DATA_DIR}/sessions"
+    fi
+
     if [ -f "$ENV_FILE" ]; then
         chmod 600 "$ENV_FILE"
         chown "${APP_USER}:${APP_USER}" "$ENV_FILE"
