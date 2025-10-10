@@ -217,6 +217,13 @@ app.use(morgan("combined"));
 // CSRF protection setup
 const csrfSetup = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET || "default-csrf-secret-change-in-production",
+  getSessionIdentifier: (req) => {
+    const forwarded = req.headers["x-forwarded-for"];
+    if (typeof forwarded === "string" && forwarded.length > 0) {
+      return forwarded.split(",")[0].trim();
+    }
+    return req.ip || "anonymous";
+  },
   cookieName: "__Host-csrf",
   cookieOptions: {
     sameSite: "strict",
@@ -229,7 +236,7 @@ const csrfSetup = doubleCsrf({
   getTokenFromRequest: (req) => req.headers["x-csrf-token"]
 });
 
-const generateToken = csrfSetup.generateToken;
+const generateCsrfToken = csrfSetup.generateCsrfToken;
 // In test mode, disable CSRF protection
 const doubleCsrfProtection = process.env.NODE_ENV === "test"
   ? (req, res, next) => next()
@@ -673,7 +680,7 @@ app.post("/api/invites", authMiddleware, requireAdmin, doubleCsrfProtection, (_r
 
 /** Routen */
 app.get("/api/csrf-token", (req, res) => {
-  const token = generateToken(req, res);
+  const token = generateCsrfToken(req, res);
   res.json({ token });
 });
 

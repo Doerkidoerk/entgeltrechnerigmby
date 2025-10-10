@@ -9,6 +9,17 @@ const STRONG_PASS = 'Admin123!Test';
 const loginAs = (username = 'admin', password = STRONG_PASS) =>
   https(request(app).post('/api/login')).send({ username, password });
 
+describe('csrf token endpoint', () => {
+  test('returns token and sets cookie', async () => {
+    const res = await request(app).get('/api/csrf-token');
+    expect(res.status).toBe(200);
+    expect(typeof res.body.token).toBe('string');
+    expect(res.body.token.length).toBeGreaterThan(0);
+    const cookies = res.headers['set-cookie'] || [];
+    expect(cookies.some(c => /^__Host-csrf=/.test(c))).toBe(true);
+  });
+});
+
 describe('POST /api/calc', () => {
   const payload = {
     tariffDate: 'april2025',
