@@ -1,8 +1,0 @@
-{
-  "admin": {
-    "salt": "5df1bca8f064400a36c05c8acf5c61b4",
-    "hash": "285fd73819b3bdc17f5b87da35d69e4df741c8fa76a6f40bed3872beccd587ebd519cb48634a46034731289625bd5d7ea88d7fe0bd65e96486b058da4cbb4db3",
-    "isAdmin": true,
-    "mustChangePassword": true
-  }
-}

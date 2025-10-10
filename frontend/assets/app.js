@@ -4,10 +4,6 @@ const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
-  const loginPanel = $("loginPanel"), loginUser = $("loginUser"), loginPass = $("loginPass"), loginBtn = $("loginBtn"), loginError = $("loginError"), appWrap = $("app");
-  let authToken = localStorage.getItem("token") || "";
-  let isAdmin = localStorage.getItem("isAdmin") === "1";
-  let csrfToken = "";
     const els = {
       tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
       stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
@@ -24,12 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
       cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
       atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
       atResult: $("atCompareResult"),
-      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion"),
-      logoutBtn: $("logoutBtn"), adminLink: $("adminLink"), pwLink: $("pwChangeLink")
+      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
     };
 
   els.version.textContent = APP_VERSION;
-  els.logoutBtn.addEventListener("click", logout);
 
     const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
     const fmtPct = n => Number(n).toFixed(2) + " %";
@@ -81,55 +75,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   })();
 
-  async function logout(){
-    if (authToken) {
-      try { await fetch("/api/logout", { method: "POST", headers: { "Authorization": `Bearer ${authToken}` } }); } catch {}
-    }
-    authToken = "";
-    localStorage.removeItem("token");
-    localStorage.removeItem("isAdmin");
-    els.adminLink.classList.add("hidden");
-    loginPanel.classList.remove("hidden");
-    appWrap.classList.add("hidden");
-  }
-
-  // API
-  async function fetchCsrfToken() {
-    try {
-      const r = await fetch("/api/csrf-token", {
-        method: "GET",
-        credentials: "include"
-      });
-      if (r.ok) {
-        const data = await r.json();
-        csrfToken = data.token;
-      }
-    } catch (e) {
-      console.error("Failed to fetch CSRF token:", e);
-    }
-  }
-
   async function fetchJSON(url, opts = {}) {
     const headers = {
       "Accept": "application/json",
-      ...(opts.headers || {}),
-      ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
+      ...(opts.headers || {})
     };
-
-    // Add CSRF token for non-GET requests
-    if (opts.method && opts.method !== "GET" && csrfToken) {
-      headers["x-csrf-token"] = csrfToken;
-    }
 
     const r = await fetch(url, {
       ...opts,
-      credentials: "include",
       headers
     });
-    if (r.status === 401) {
-      logout();
-      throw new Error("Unauthorized");
-    }
     if (!r.ok) {
       let msg = `${r.status} ${r.statusText}`;
       try { const e = await r.json(); msg = e.error || msg; } catch {}
@@ -149,7 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Init
   async function init(){
-    await fetchCsrfToken();
     try { await fetchJSON("/api/health"); setStatus("API OK","ok"); }
     catch { setStatus("API down","err"); }
 
@@ -227,53 +181,10 @@ document.addEventListener("DOMContentLoaded", () => {
     calculate();
   }
 
-  async function startApp(){
-    loginPanel.classList.add("hidden");
-    appWrap.classList.remove("hidden");
-    if (isAdmin) els.adminLink.classList.remove("hidden");
-    try {
-      await init();
-    } catch {
-      loginPanel.classList.remove("hidden");
-      appWrap.classList.add("hidden");
-      authToken = "";
-      localStorage.removeItem("token");
-    }
-  }
-
-  async function handleLogin(){
-    loginError.textContent = "";
-    if (location.protocol !== 'https:') {
-      loginError.textContent = 'HTTPS erforderlich';
-      return;
-    }
-    await fetchCsrfToken();
-    try {
-      const res = await fetchJSON("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginUser.value, password: loginPass.value })
-      });
-      authToken = res.token;
-      localStorage.setItem("token", authToken);
-      localStorage.setItem("isAdmin", res.isAdmin ? "1" : "0");
-      isAdmin = res.isAdmin;
-      if (res.mustChangePassword) {
-        window.location.href = "/change-password.html";
-        return;
-      }
-      await startApp();
-    } catch(e) {
-      loginError.textContent = "Login fehlgeschlagen";
-    }
-  }
-
-  if (authToken) {
-    startApp();
-  } else {
-    loginPanel.classList.remove("hidden");
-  }
-  loginBtn.addEventListener("click", handleLogin);
+  init().catch(err => {
+    console.error(err);
+    setStatus("API down", "err");
+  });
 
     async function loadEGs() {
       if (!els.tariffDate.value) return;

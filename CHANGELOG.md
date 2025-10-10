@@ -12,50 +12,35 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ---
 
-## [1.12.0] - 2025-10-09
+## [1.13.0] - 2025-10-10
 
-### Hinzugefügt
-- **Security-Hardening:** Rate-Limiting für Login (5 Versuche/15min) und API (100 Requests/15min)
-- **CSRF-Protection:** Double Submit Cookie Pattern mit csrf-csrf
-- **Audit-Logging:** Alle sicherheitsrelevanten Events werden in `data/audit.log` protokolliert
-- **Starke Passwörter:** Mindestens 12 Zeichen mit Groß-/Kleinbuchstaben, Zahlen, Sonderzeichen
-- **Session-Management:** Automatisches Cleanup abgelaufener Sessions alle 10 Minuten
-- **Session-Rotation:** Bei Passwortänderung werden alte Sessions invalidiert
-- **CSP-Header:** Content Security Policy gegen XSS-Angriffe
-- **Sichere Datei-Berechtigungen:** chmod 600 für sensible Dateien (users.json, invites.json, audit.log)
-- **Stärkere Invite-Codes:** 12 Zeichen mit 7-Tage-Ablaufzeit
-- **Input-Validierung:** Strenge Validierung mit Zod-Schema
-- **HTTPS-Enforcement:** Passwort-Endpunkte nur über HTTPS
+### Entfernt
+- Sämtliche Authentifizierungs-, Session- und Benutzerverwaltungsfunktionen
+- Audit-Log-Dateien und Einladungscode-Handling
 
 ### Geändert
-- Standard-Admin-Passwort muss beim ersten Login geändert werden
-- Session-TTL standardmäßig 1 Stunde (konfigurierbar via `SESSION_TTL_MS`)
-- Verbesserte Fehlerbehandlung und Logging
+- Frontend zeigt den Rechner ohne Login-Barrieren an
+- Dokumentation für Installation, Sicherheit und Updates auf die öffentliche Nutzung angepasst
+- `upgrade.sh` bereinigt Berechtigungsprüfungen von nicht mehr vorhandenen Dateien
 
-### Sicherheit
-- **WICHTIG:** `CSRF_SECRET` muss in Produktion gesetzt werden
-- **WICHTIG:** `ALLOWED_ORIGINS` sollte auf Ihre Domain beschränkt sein
-- Alle Passwörter werden mit scrypt gehasht (64 Bytes)
-- Timing-safe Passwort-Vergleich gegen Timing-Angriffe
-
-### Migration von v1.11.x → v1.12.0
-Keine Breaking Changes. Nach dem Update:
-1. `.env` Datei erstellen und `CSRF_SECRET` setzen (siehe INSTALL.md)
-2. Beim nächsten Login wird Admin aufgefordert, Passwort zu ändern
-3. Alte Sessions werden automatisch invalidiert
+### Migration von v1.12.x → v1.13.0
+1. Alte Benutzer- und Einladungstabellen (`users.json`, `invites.json`) sichern und anschließend entfernen
+2. Konfigurationsdateien auf nicht mehr benötigte Secrets (z. B. `CSRF_SECRET`, `SESSION_TTL_MS`) prüfen
+3. Deployment-Checkliste aus den aktualisierten Docs nutzen
 
 ---
 
-## [1.11.0] - (Datum einfügen)
+## [1.12.0] - 2025-10-09
 
 ### Hinzugefügt
-- Benutzer-Registrierung via Einladungscodes
-- Admin-Bereich für Benutzerverwaltung
-- Passwort-Änderung für alle Benutzer
+- Security-Hardening mit Rate-Limiting für API-Anfragen
+- Content-Security-Policy und zusätzliche Security-Header via Helmet
+- Validierung sämtlicher Eingaben über Zod
+- Health-Check-Endpunkt `/api/health`
 
 ### Geändert
-- Umstellung auf bcrypt für Passwort-Hashing
-- Verbesserte Login-Seite
+- Verbesserte Fehlerbehandlung und Logging
+- Tariftabellen-Ladeprozess robuster gestaltet
 
 ---
 
@@ -116,18 +101,19 @@ Keine Breaking Changes. Nach dem Update:
 
 ## Versionierungs-Schema
 
-**MAJOR.MINOR.PATCH** (z.B. 1.12.0)
+**MAJOR.MINOR.PATCH** (z.B. 1.13.0)
 
 - **MAJOR:** Breaking Changes (Inkompatible API-Änderungen)
 - **MINOR:** Neue Features (abwärtskompatibel)
 - **PATCH:** Bugfixes (abwärtskompatibel)
 
 **Beispiele:**
-- `1.12.0 → 1.12.1`: Bugfix, kein Update-Risiko
-- `1.12.0 → 1.13.0`: Neue Features, geringes Risiko
-- `1.12.0 → 2.0.0`: Breaking Changes, CHANGELOG lesen!
+- `1.13.0 → 1.13.1`: Bugfix, kein Update-Risiko
+- `1.13.0 → 1.14.0`: Neue Features, geringes Risiko
+- `1.13.0 → 2.0.0`: Breaking Changes, CHANGELOG lesen!
 
 ---
 
-[Unreleased]: https://github.com/Doerkidoerk/entgeltrechnerigmby/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/Doerkidoerk/entgeltrechnerigmby/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/Doerkidoerk/entgeltrechnerigmby/releases/tag/v1.13.0
 [1.12.0]: https://github.com/Doerkidoerk/entgeltrechnerigmby/releases/tag/v1.12.0

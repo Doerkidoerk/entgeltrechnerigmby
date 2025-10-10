@@ -251,20 +251,15 @@ check_permissions() {
     # Besitzer auf app-user setzen
     chown -R "${APP_USER}:${APP_USER}" "$APP_DIR"
 
-    # Sensible Dateien schützen
-    if [ -f "${DATA_DIR}/users.json" ]; then
-        chmod 600 "${DATA_DIR}/users.json"
-        chown "${APP_USER}:${APP_USER}" "${DATA_DIR}/users.json"
-    fi
-
-    if [ -f "${DATA_DIR}/invites.json" ]; then
-        chmod 600 "${DATA_DIR}/invites.json"
-        chown "${APP_USER}:${APP_USER}" "${DATA_DIR}/invites.json"
-    fi
-
-    if [ -f "${DATA_DIR}/audit.log" ]; then
-        chmod 600 "${DATA_DIR}/audit.log"
-        chown "${APP_USER}:${APP_USER}" "${DATA_DIR}/audit.log"
+    # Tariftabellen auf 640 setzen
+    shopt -s nullglob
+    local tables=("${DATA_DIR}"/*.json)
+    shopt -u nullglob
+    if [ ${#tables[@]} -gt 0 ]; then
+        for file in "${tables[@]}"; do
+            chmod 640 "$file"
+            chown "${APP_USER}:${APP_USER}" "$file"
+        done
     fi
 
     if [ -f "$ENV_FILE" ]; then
