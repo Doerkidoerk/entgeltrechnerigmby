@@ -517,6 +517,11 @@ app.post("/api/register", ensureHttps, loginLimiter, doubleCsrfProtection, (req,
 app.post("/api/login", ensureHttps, loginLimiter, doubleCsrfProtection, (req, res) => {
   const { username, password } = req.body || {};
 
+  if (username === "admin" && (!users.admin || typeof users.admin !== "object")) {
+    const allowPersist = fs.existsSync(USERS_FILE);
+    ensureDefaultAdmin({ allowPersist });
+  }
+
   // Timing-safe: immer Hash berechnen, auch wenn User nicht existiert
   const user = users[username];
   const dummySalt = "0000000000000000";
