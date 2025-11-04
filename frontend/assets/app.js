@@ -1,36 +1,134 @@
 const APP_VERSION = "1.11";
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"];
 
+// ==== DOM Utilities ====
+const DOM = {
+  show: (...elements) => elements.forEach(el => el && el.classList.remove('hidden')),
+  hide: (...elements) => elements.forEach(el => el && el.classList.add('hidden')),
+  toggle: (element, condition) => {
+    if (!element) return;
+    condition ? element.classList.remove('hidden') : element.classList.add('hidden');
+  },
+  setDisabled: (element, disabled) => {
+    if (!element) return;
+    element.disabled = disabled;
+  }
+};
+
+// ==== Template Functions ====
+const templates = {
+  resultTile(title, value, subtitle) {
+    return `
+      <div class="tile">
+        <h3>${title}</h3>
+        <div class="big">${value}</div>
+        ${subtitle ? `<div class="micro muted">${subtitle}</div>` : ''}
+      </div>
+    `;
+  },
+
+  additionalPayments(breakdown) {
+    return `
+      <div class="tile">
+        <h3>Zusatzzahlungen</h3>
+        <ul class="list">
+          <li>13. Monat (${breakdown.p13} %): <strong>${fmtEUR.format(breakdown.mon13)}</strong></li>
+          <li>T-Geld (18,4 %): <strong>${fmtEUR.format(breakdown.tGeld)}</strong></li>
+          <li>T-ZUG A (27,5 %): <strong>${fmtEUR.format(breakdown.tZugA)}</strong></li>
+          <li>T-ZUG B: <strong>${fmtEUR.format(breakdown.tZugB)}</strong></li>
+        </ul>
+      </div>
+    `;
+  },
+
+  vacation(urlaubData) {
+    return `
+      <div class="tile">
+        <h3>Urlaub</h3>
+        <ul class="list">
+          <li>Entgelt/Tag: <strong>${fmtEUR.format(urlaubData.entgeltProTag)}</strong></li>
+          <li>Gesamt (${urlaubData.tage} Tage): <strong>${fmtEUR.format(urlaubData.gesamt)}</strong></li>
+        </ul>
+      </div>
+    `;
+  }
+};
+
+// Formatters
+const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+const fmtPct = n => Number(n).toFixed(2) + " %";
+const fmtHours = n => Number(n).toFixed(1) + " h";
+
 // Robust gegen Lade-/Reihenfolgeprobleme
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
-    const els = {
-      tariffDate: $("tariffDate"), ausbildung: $("ausbildung"), kinderWrap: $("kinderWrap"), kinder: $("eigeneKinder"), eg: $("egSelect"), egLabel: $("egLabel"),
-      stufeWrap: $("stufeWrap"), stufe: $("stufeSelect"),
-      irwaz: $("irwazHours"), irwazRange: $("irwazRange"),
-      leistung: $("leistungsPct"), leistungRange: $("leistungsRange"),
-      uTage: $("urlaubstage"), uTageRange: $("urlaubstageRange"),
-      betriebs: $("betriebsMonate"), period: $("tZugBPeriod"),
-      status: $("status"), azubiHint: $("azubiHint"),
-      irwazBadge: $("irwazBadge"), leistungBadge: $("leistungBadge"), urlaubBadge: $("urlaubBadge"),
-      result: $("result"),
-      resetBtn: $("resetBtn"), snapshotBtn: $("snapshotBtn"), clearSnapshotBtn: $("clearSnapshotBtn"),
-      compareWrap: $("compare"), cmpNowMonth: $("cmpNowMonth"), cmpNowYear: $("cmpNowYear"), cmpNowAvg: $("cmpNowAvg"),
-      cmpSnapMonth: $("cmpSnapMonth"), cmpSnapYear: $("cmpSnapYear"), cmpSnapAvg: $("cmpSnapAvg"),
-      cmpDeltaMonth: $("cmpDeltaMonth"), cmpDeltaYear: $("cmpDeltaYear"), cmpDeltaAvg: $("cmpDeltaAvg"),
-      atCompare: $("atCompare"), atWrap: $("atWrap"), atAmount: $("atAmount"), atType: $("atType"), atHours: $("atHours"),
-      atResult: $("atCompareResult"),
-      themeToggle: $("themeToggle"), toast: $("toast"), version: $("appVersion")
-    };
+
+  // Gruppierte Element-Referenzen für bessere Wartbarkeit
+  const els = {
+    // Inputs
+    tariffDate: $("tariffDate"),
+    ausbildung: $("ausbildung"),
+    kinderWrap: $("kinderWrap"),
+    kinder: $("eigeneKinder"),
+    eg: $("egSelect"),
+    egLabel: $("egLabel"),
+    stufeWrap: $("stufeWrap"),
+    stufe: $("stufeSelect"),
+    irwaz: $("irwazHours"),
+    irwazRange: $("irwazRange"),
+    leistung: $("leistungsPct"),
+    leistungRange: $("leistungsRange"),
+    uTage: $("urlaubstage"),
+    uTageRange: $("urlaubstageRange"),
+    betriebs: $("betriebsMonate"),
+    period: $("tZugBPeriod"),
+
+    // Status & Badges
+    status: $("status"),
+    azubiHint: $("azubiHint"),
+    irwazBadge: $("irwazBadge"),
+    leistungBadge: $("leistungBadge"),
+    urlaubBadge: $("urlaubBadge"),
+
+    // Output
+    result: $("result"),
+
+    // Buttons
+    resetBtn: $("resetBtn"),
+    snapshotBtn: $("snapshotBtn"),
+    clearSnapshotBtn: $("clearSnapshotBtn"),
+
+    // Comparison
+    compareWrap: $("compare"),
+    cmpNowMonth: $("cmpNowMonth"),
+    cmpNowYear: $("cmpNowYear"),
+    cmpNowAvg: $("cmpNowAvg"),
+    cmpSnapMonth: $("cmpSnapMonth"),
+    cmpSnapYear: $("cmpSnapYear"),
+    cmpSnapAvg: $("cmpSnapAvg"),
+    cmpDeltaMonth: $("cmpDeltaMonth"),
+    cmpDeltaYear: $("cmpDeltaYear"),
+    cmpDeltaAvg: $("cmpDeltaAvg"),
+
+    // AT Comparison
+    atCompare: $("atCompare"),
+    atWrap: $("atWrap"),
+    atAmount: $("atAmount"),
+    atType: $("atType"),
+    atHours: $("atHours"),
+    atResult: $("atCompareResult"),
+
+    // Theme & Toast
+    themeToggle: $("themeToggle"),
+    toast: $("toast"),
+    version: $("appVersion")
+  };
 
   els.version.textContent = APP_VERSION;
 
-    const fmtEUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
-    const fmtPct = n => Number(n).toFixed(2) + " %";
-    const fmtHours = n => Number(n).toFixed(1) + " h";
-    let atMin = {};
-    let currentTable = {};
-    let lastTotals = null;
+  let atMin = {};
+  let currentTable = {};
+  let lastTotals = null;
 
   // Helpers
   function setStatus(text, cls){ els.status.textContent = text; els.status.className = `pill ${cls||""}`.trim(); }
@@ -268,20 +366,22 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateAusbildungSettings(){
     const isAzubi = els.ausbildung.value === "ja";
     const max = isAzubi ? 35 : 40;
+
     els.irwaz.max = els.irwazRange.max = max;
+
     if (Number(els.irwaz.value) > max){
       els.irwaz.value = els.irwazRange.value = max;
       els.irwazBadge.textContent = fmtHours(max);
     }
+
+    DOM.setDisabled(els.atCompare, isAzubi);
+    DOM.toggle(els.kinderWrap, isAzubi);
+    DOM.toggle(els.atWrap, !isAzubi && els.atCompare.value === 'ja');
+
     if (isAzubi){
       els.atCompare.value = "nein";
-      els.atCompare.disabled = true;
-      els.atWrap.classList.add("hidden");
-      els.atResult.classList.add("hidden");
-      els.kinderWrap.classList.remove("hidden");
+      DOM.hide(els.atWrap, els.atResult);
     } else {
-      els.atCompare.disabled = false;
-      els.kinderWrap.classList.add("hidden");
       els.kinder.value = "nein";
     }
   }
@@ -329,29 +429,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const b = d.breakdown, t = d.totals;
     const bonusTxt = b.bonus !== undefined ? ` · Bonus: ${fmtEUR.format(b.bonus)}` : "";
     const kinderTxt = b.kinderzulage ? ` · Zulage: ${fmtEUR.format(b.kinderzulage)}` : "";
+
     els.result.innerHTML = `
       <div class="subgrid">
-        <div class="tile"><h3>Monat</h3><div class="big">${fmtEUR.format(t.monat)}</div>
-          <div class="micro muted">Grund: ${fmtEUR.format(b.grund)}${bonusTxt}${kinderTxt}</div></div>
-        <div class="tile"><h3>Jahr</h3><div class="big">${fmtEUR.format(t.jahr)}</div>
-          <div class="micro muted">Ø Monat: ${fmtEUR.format(t.durchschnittMonat)}</div></div>
-        <div class="tile">
-          <h3>Zusatz­zahlungen</h3>
-          <ul class="list">
-            <li>13. Monat (${b.p13} %): <strong>${fmtEUR.format(b.mon13)}</strong></li>
-            <li>T-Geld (18,4 %): <strong>${fmtEUR.format(b.tGeld)}</strong></li>
-            <li>T-ZUG A (27,5 %): <strong>${fmtEUR.format(b.tZugA)}</strong></li>
-            <li>T-ZUG B: <strong>${fmtEUR.format(b.tZugB)}</strong></li>
-          </ul>
-        </div>
-        <div class="tile">
-          <h3>Urlaub</h3>
-          <ul class="list">
-            <li>Entgelt/Tag: <strong>${fmtEUR.format(b.urlaub.entgeltProTag)}</strong></li>
-            <li>Gesamt (${b.urlaub.tage} Tage): <strong>${fmtEUR.format(b.urlaub.gesamt)}</strong></li>
-          </ul>
-        </div>
-      </div>`;
+        ${templates.resultTile('Monat', fmtEUR.format(t.monat), `Grund: ${fmtEUR.format(b.grund)}${bonusTxt}${kinderTxt}`)}
+        ${templates.resultTile('Jahr', fmtEUR.format(t.jahr), `Ø Monat: ${fmtEUR.format(t.durchschnittMonat)}`)}
+        ${templates.additionalPayments(b)}
+        ${templates.vacation(b.urlaub)}
+      </div>
+    `;
   }
 
   async function renderATComparison(){
