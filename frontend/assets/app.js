@@ -124,11 +124,12 @@ document.addEventListener("DOMContentLoaded", () => {
     version: $("appVersion")
   };
 
-  els.version.textContent = APP_VERSION;
+  if (els.version) els.version.textContent = APP_VERSION;
 
   let atMin = {};
   let currentTable = {};
   let lastTotals = null;
+  let calcSeq = 0;
 
   // Helpers
   function setStatus(text, cls){ els.status.textContent = text; els.status.className = `pill ${cls||""}`.trim(); }
@@ -162,15 +163,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Theme toggle
   (function(){
-    const saved = localStorage.getItem("theme") || "auto";
-    document.documentElement.setAttribute("data-theme", saved);
-    els.themeToggle.addEventListener("click", () => {
-      const cur = document.documentElement.getAttribute("data-theme") || "auto";
-      const next = cur === "auto" ? "dark" : cur === "dark" ? "light" : "auto";
-      document.documentElement.setAttribute("data-theme", next);
-      localStorage.setItem("theme", next);
-      toast(`Theme: ${next}`);
+    const THEME_KEY = "theme";
+    function applyTheme(pref) {
+      const effective = pref === "auto"
+        ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+        : pref;
+      document.documentElement.setAttribute("data-theme", effective);
+    }
+    const saved = localStorage.getItem(THEME_KEY) || "auto";
+    applyTheme(saved);
+    window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+      if ((localStorage.getItem(THEME_KEY) || "auto") === "auto") applyTheme("auto");
     });
+    if (els.themeToggle) {
+      els.themeToggle.addEventListener("click", () => {
+        const cur = localStorage.getItem(THEME_KEY) || "auto";
+        const next = cur === "auto" ? "dark" : cur === "dark" ? "light" : "auto";
+        localStorage.setItem(THEME_KEY, next);
+        applyTheme(next);
+        toast(`Theme: ${next}`);
+      });
+    }
   })();
 
   async function fetchJSON(url, opts = {}) {
@@ -224,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
         els.tariffDate.value = def;
         await loadEGs();
         updateAzubiHint();
-      } catch(e){ console.error(e); }
+      } catch(e){ setStatus("Fehler beim Laden","err"); }
 
     // Slider <-> Number verknüpfen + Badges
     link(els.irwaz, els.irwazRange, v => els.irwazBadge.textContent = fmtHours(v));
@@ -279,14 +292,20 @@ document.addEventListener("DOMContentLoaded", () => {
     calculate();
   }
 
-  init().catch(err => {
-    console.error(err);
+  init().catch(() => {
     setStatus("API down", "err");
   });
 
     async function loadEGs() {
       if (!els.tariffDate.value) return;
-      const data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
+      let data;
+      try {
+        data = await fetchJSON(`/api/tables/${encodeURIComponent(els.tariffDate.value)}`);
+      } catch(e) {
+        setStatus("Fehler beim Laden","err");
+        toast("Tarifdaten konnten nicht geladen werden");
+        return;
+      }
       currentTable = data.table || {};
       atMin = data.atMin || {};
       const table = currentTable;
@@ -405,6 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function calculate(){
+    const seq = ++calcSeq;
     const payload = {
       tariffDate: els.tariffDate.value, eg: els.eg.value, stufe: els.stufe.value || undefined,
       irwazHours: Number(els.irwaz.value), leistungsPct: Number(els.leistung.value),
@@ -415,11 +435,13 @@ document.addEventListener("DOMContentLoaded", () => {
     setStatus("Berechne…","muted");
     try{
       const data = await fetchJSON("/api/calc",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      if (seq !== calcSeq) return;
       renderResult(data); maybeCompare(data);
       lastTotals = data.totals;
       renderATComparison();
       setStatus("OK","ok");
     }catch(e){
+      if (seq !== calcSeq) return;
       els.result.innerHTML = `<div class="alert">Fehler: ${e.message}</div>`;
       setStatus("Fehler","err");
     }
