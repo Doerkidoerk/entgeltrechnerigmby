@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Entgeltrechner für bayerische Metall- und Elektroindustrie</title>
-  <meta name="description" content="IG Metall Tarifberechnung für Bayern – klar und interaktiv" />
+  <title>Entgeltrechner – IG Metall M+E Bayern</title>
+  <meta name="description" content="IG Metall Tarifberechnung für die Metall- und Elektroindustrie Bayern – klar und interaktiv" />
   <link rel="stylesheet" href="/assets/style.css" />
   <script defer src="/assets/app.js"></script>
 </head>
@@ -31,200 +31,225 @@
   </svg>
 
   <div id="app">
-  <header class="site-header" role="banner">
-    <div class="container header-bar">
-      <div class="brand">
-        <div class="logo" aria-hidden="true">
-          <svg role="img" aria-label="Rechner Icon">
-            <use href="#icon-calculator"/>
-          </svg>
-        </div>
-        <div>
-          <h1>Entgeltrechner für bayerische Metall- und Elektroindustrie</h1>
-          <p class="muted small">IG Metall Tarifberechnung  – klar & interaktiv</p>
-        </div>
-      </div>
-
-      <div class="header-actions">
-        <button id="themeToggle" class="icon-btn" type="button" aria-label="Theme umschalten (aktuell: auto)">
-          <svg aria-hidden="true">
-            <use href="#icon-sun"/>
-          </svg>
-        </button>
-        <span id="status" class="pill" role="status" aria-live="polite">Verbinde…</span>
-      </div>
-    </div>
-  </header>
-
-  <main id="main-content" class="container main-grid" role="main">
-    <form id="calculator-form" aria-label="Tarifberechnungs-Formular">
-      <section class="card" aria-labelledby="input-heading">
-        <h2 id="input-heading">Eingaben</h2>
-
-        <div class="field">
-          <label for="tariffDate">Tarifdatum</label>
-          <select id="tariffDate" aria-required="true"></select>
-          <p class="hint small hidden" id="azubiHint" role="status">Hinweis: Die Auszubildendenvergütung 2025 gilt ab 01. Januar 2025.</p>
-        </div>
-
-      <div class="field">
-        <label for="ausbildung">In Ausbildung?</label>
-        <select id="ausbildung">
-          <option value="nein" selected>Nein</option>
-          <option value="ja">Ja</option>
-        </select>
-      </div>
-
-      <div class="field hidden" id="kinderWrap">
-        <label for="eigeneKinder">Eigene Kinder?</label>
-        <select id="eigeneKinder">
-          <option value="nein" selected>Nein</option>
-          <option value="ja">Ja</option>
-        </select>
-      </div>
-
-      <div class="field two">
-        <div id="egWrap">
-          <label for="egSelect" id="egLabel">Entgeltgruppe</label>
-          <select id="egSelect"></select>
-        </div>
-        <div id="stufeWrap" class="hidden">
-          <label for="stufeSelect">Stufe</label>
-          <select id="stufeSelect"></select>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="irwazHours" id="irwaz-label">Wöchentliche Arbeitszeit</label>
-          <span class="badge" id="irwazBadge" aria-live="polite">35,0 h</span>
-        </div>
-        <div class="combo" role="group" aria-labelledby="irwaz-label">
-          <input id="irwazHours" type="number" min="0" max="40" step="0.5" value="35" aria-describedby="irwazBadge" />
-          <input id="irwazRange" class="range" type="range" min="0" max="40" step="0.5" value="35" aria-label="Wöchentliche Arbeitszeit (Slider)" aria-valuetext="35,0 Stunden" />
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="leistungsPct" id="leistung-label">Leistung</label>
-          <span class="badge" id="leistungBadge" aria-live="polite">14,00 %</span>
-        </div>
-        <div class="combo" role="group" aria-labelledby="leistung-label">
-          <input id="leistungsPct" type="number" min="0" max="28" step="0.28" value="14" aria-describedby="leistungBadge" />
-          <input id="leistungsRange" class="range" type="range" min="0" max="28" step="0.28" value="14" aria-label="Leistung (Slider)" aria-valuetext="14,00 Prozent" />
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="urlaubstage" id="urlaub-label">Urlaubstage</label>
-          <span class="badge" id="urlaubBadge" aria-live="polite">30 Tage</span>
-        </div>
-        <div class="combo" role="group" aria-labelledby="urlaub-label">
-          <input id="urlaubstage" type="number" min="0" max="36" step="1" value="30" aria-describedby="urlaubBadge" />
-          <input id="urlaubstageRange" class="range" type="range" min="0" max="36" step="1" value="30" aria-label="Urlaubstage (Slider)" aria-valuetext="30 Tage" />
-        </div>
-      </div>
-
-      <div class="field two">
-        <div>
-            <label for="betriebsMonate">Betriebszugehörigkeit (Monate)</label>
-            <select id="betriebsMonate">
-              <option value="0">0</option><option value="6">6</option>
-              <option value="12">12</option><option value="24">24</option>
-              <option value="36" selected>36</option>
-            </select>
-          </div>
-        <div>
-          <label for="tZugBPeriod">T-ZUG B Zeitraum</label>
-          <select id="tZugBPeriod">
-            <option value="until2025">Bis 31.12.2025 (18,5 %)</option>
-            <option value="from2026">Ab 01.01.2026 (26,5 %)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="atCompare">AT-Vergleich</label>
-        <select id="atCompare">
-          <option value="nein" selected>Nein</option>
-          <option value="ja">Ja</option>
-        </select>
-      </div>
-
-      <div id="atWrap" class="hidden">
-        <div class="field">
-          <label for="atAmount">AT-Gehalt</label>
-          <input id="atAmount" type="text" inputmode="decimal" />
-        </div>
-        <div class="field two">
-          <div>
-            <label for="atType">Angabe als</label>
-            <select id="atType">
-              <option value="monat">Monatlich</option>
-              <option value="jahr">Jährlich</option>
-            </select>
+    <header class="site-header" role="banner">
+      <div class="container header-bar">
+        <div class="brand">
+          <div class="logo-igm" aria-hidden="true">
+            <div class="logo-igm-inner">
+              <span class="logo-ig">IG</span>
+              <span class="logo-metall">Metall</span>
+            </div>
           </div>
           <div>
-            <label for="atHours">Stundenbasis</label>
-            <select id="atHours">
-              <option value="35">35 h/Woche</option>
-              <option value="40">40 h/Woche</option>
-            </select>
+            <h1>Entgeltrechner</h1>
+            <p class="header-sub">Metall- und Elektroindustrie Bayern</p>
           </div>
         </div>
+        <div class="header-actions">
+          <button id="themeToggle" class="icon-btn" type="button" aria-label="Theme umschalten (aktuell: auto)">
+            <svg aria-hidden="true"><use href="#icon-sun"/></svg>
+          </button>
+          <span id="status" class="pill" role="status" aria-live="polite">Verbinde…</span>
+        </div>
       </div>
+    </header>
 
-      <div class="actions">
-        <button id="resetBtn" class="btn ghost" type="button">Zurücksetzen</button>
-        <div class="spacer"></div>
-        <button id="snapshotBtn" class="btn subtle" type="button">Snapshot speichern</button>
-        <button id="clearSnapshotBtn" class="icon-btn" type="button" aria-label="Snapshot löschen">
-          <svg aria-hidden="true">
-            <use href="#icon-trash"/>
-          </svg>
-        </button>
-      </div>
+    <main id="main-content" class="container main-grid" role="main">
+      <form id="calculator-form" aria-label="Tarifberechnungs-Formular">
+        <section class="card" aria-labelledby="input-heading">
+          <h2 id="input-heading" class="sr-only">Eingaben</h2>
+
+          <!-- Tarifdatum -->
+          <div class="form-section">
+            <div class="form-section-label">Tarifdatum</div>
+            <div class="field">
+              <label for="tariffDate" class="sr-only">Tarifdatum</label>
+              <select id="tariffDate" aria-required="true"></select>
+              <p class="hint small hidden" id="azubiHint" role="status">Hinweis: Die Auszubildendenvergütung 2025 gilt ab 01. Januar 2025.</p>
+            </div>
+          </div>
+
+          <!-- Beschäftigung -->
+          <div class="form-section">
+            <div class="form-section-label">Beschäftigung</div>
+            <div class="field">
+              <label for="ausbildung">In Ausbildung?</label>
+              <select id="ausbildung">
+                <option value="nein" selected>Nein</option>
+                <option value="ja">Ja</option>
+              </select>
+            </div>
+            <div class="field hidden" id="kinderWrap">
+              <label for="eigeneKinder">Eigene Kinder?</label>
+              <select id="eigeneKinder">
+                <option value="nein" selected>Nein</option>
+                <option value="ja">Ja</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Eingruppierung -->
+          <div class="form-section">
+            <div class="form-section-label">Eingruppierung</div>
+            <div class="field two">
+              <div id="egWrap">
+                <label for="egSelect" id="egLabel">Entgeltgruppe</label>
+                <select id="egSelect"></select>
+              </div>
+              <div id="stufeWrap" class="hidden">
+                <label for="stufeSelect">Stufe</label>
+                <select id="stufeSelect"></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arbeitszeit & Zulage -->
+          <div class="form-section">
+            <div class="form-section-label">Arbeitszeit &amp; Zulage</div>
+            <div class="field">
+              <div class="label-row">
+                <label for="irwazHours" id="irwaz-label">Wöchentliche Arbeitszeit</label>
+                <span class="badge" id="irwazBadge" aria-live="polite">35,0 h</span>
+              </div>
+              <div class="combo" role="group" aria-labelledby="irwaz-label">
+                <input id="irwazHours" type="number" min="0" max="40" step="0.5" value="35" autocomplete="off" aria-describedby="irwazBadge" />
+                <label for="irwazRange" class="sr-only">Wöchentliche Arbeitszeit (Regler)</label>
+                <input id="irwazRange" class="range" type="range" min="0" max="40" step="0.5" value="35" aria-valuetext="35,0 Stunden" />
+              </div>
+            </div>
+            <div class="field">
+              <div class="label-row">
+                <label for="leistungsPct" id="leistung-label">Leistungszulage</label>
+                <span class="badge" id="leistungBadge" aria-live="polite">14,00 %</span>
+              </div>
+              <div class="combo" role="group" aria-labelledby="leistung-label">
+                <input id="leistungsPct" type="number" min="0" max="28" step="0.28" value="14" autocomplete="off" aria-describedby="leistungBadge" />
+                <label for="leistungsRange" class="sr-only">Leistungszulage (Regler)</label>
+                <input id="leistungsRange" class="range" type="range" min="0" max="28" step="0.28" value="14" aria-valuetext="14,00 Prozent" />
+              </div>
+            </div>
+            <div class="field">
+              <div class="label-row">
+                <label for="urlaubstage" id="urlaub-label">Urlaubstage</label>
+                <span class="badge" id="urlaubBadge" aria-live="polite">30 Tage</span>
+              </div>
+              <div class="combo" role="group" aria-labelledby="urlaub-label">
+                <input id="urlaubstage" type="number" min="0" max="36" step="1" value="30" autocomplete="off" aria-describedby="urlaubBadge" />
+                <label for="urlaubstageRange" class="sr-only">Urlaubstage (Regler)</label>
+                <input id="urlaubstageRange" class="range" type="range" min="0" max="36" step="1" value="30" aria-valuetext="30 Tage" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Weitere Einstellungen -->
+          <div class="form-section">
+            <div class="form-section-label">Weitere Einstellungen</div>
+            <div class="field two">
+              <div>
+                <label for="betriebsMonate">Betriebszugehörigkeit</label>
+                <select id="betriebsMonate">
+                  <option value="0">0 Monate</option>
+                  <option value="6">6 Monate</option>
+                  <option value="12">12 Monate</option>
+                  <option value="24">24 Monate</option>
+                  <option value="36" selected>36 Monate</option>
+                </select>
+              </div>
+              <div>
+                <label for="tZugBPeriod">T-ZUG B Zeitraum</label>
+                <select id="tZugBPeriod">
+                  <option value="until2025">Bis 31.12.2025 (18,5 %)</option>
+                  <option value="from2026">Ab 01.01.2026 (26,5 %)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- AT-Vergleich -->
+          <div class="form-section">
+            <div class="form-section-label">AT-Vergleich</div>
+            <div class="field">
+              <label for="atCompare">AT-Vergleich aktivieren</label>
+              <select id="atCompare">
+                <option value="nein" selected>Nein</option>
+                <option value="ja">Ja</option>
+              </select>
+            </div>
+            <div id="atWrap" class="hidden">
+              <div class="field">
+                <label for="atAmount">AT-Gehalt</label>
+                <input id="atAmount" type="text" inputmode="decimal" autocomplete="off" />
+              </div>
+              <div class="field two">
+                <div>
+                  <label for="atType">Angabe als</label>
+                  <select id="atType">
+                    <option value="monat">Monatlich</option>
+                    <option value="jahr">Jährlich</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="atHours">Stundenbasis</label>
+                  <select id="atHours">
+                    <option value="35">35 h/Woche</option>
+                    <option value="40">40 h/Woche</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <button id="resetBtn" class="btn ghost" type="button">Zurücksetzen</button>
+            <div class="spacer"></div>
+            <button id="snapshotBtn" class="btn subtle" type="button">Snapshot speichern</button>
+            <button id="clearSnapshotBtn" class="icon-btn" type="button" aria-label="Snapshot löschen">
+              <svg aria-hidden="true"><use href="#icon-trash"/></svg>
+            </button>
+          </div>
+        </section>
+      </form>
+
+      <section class="card" id="output" aria-labelledby="result-heading" aria-live="polite">
+        <h2 id="result-heading">Ergebnis</h2>
+        <div id="result" class="muted">Bitte Eingaben prüfen – die Berechnung läuft live.</div>
+
+        <div id="compare" class="compare hidden" role="region" aria-labelledby="compare-heading">
+          <h3 id="compare-heading">Vergleich mit Snapshot</h3>
+          <div class="compare-grid">
+            <div class="panel">
+              <div class="panel-title">Aktuell</div>
+              <div class="panel-row"><span>Monat</span><strong id="cmpNowMonth">—</strong></div>
+              <div class="panel-row"><span>Jahr</span><strong id="cmpNowYear">—</strong></div>
+              <div class="panel-row"><span>Ø/Monat</span><strong id="cmpNowAvg">—</strong></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Snapshot</div>
+              <div class="panel-row"><span>Monat</span><strong id="cmpSnapMonth">—</strong></div>
+              <div class="panel-row"><span>Jahr</span><strong id="cmpSnapYear">—</strong></div>
+              <div class="panel-row"><span>Ø/Monat</span><strong id="cmpSnapAvg">—</strong></div>
+            </div>
+            <div class="panel delta">
+              <div class="panel-title">Δ</div>
+              <div class="panel-row"><span>Monat</span><strong id="cmpDeltaMonth">—</strong></div>
+              <div class="panel-row"><span>Jahr</span><strong id="cmpDeltaYear">—</strong></div>
+              <div class="panel-row"><span>Ø/Monat</span><strong id="cmpDeltaAvg">—</strong></div>
+            </div>
+          </div>
+        </div>
+        <div id="atCompareResult" class="hidden"></div>
       </section>
-    </form>
+    </main>
 
-    <section class="card" id="output" aria-labelledby="result-heading" aria-live="polite">
-      <h2 id="result-heading">Ergebnis</h2>
-      <div id="result" class="muted">Bitte Eingaben prüfen – die Berechnung läuft live.</div>
-
-      <div id="compare" class="compare hidden" role="region" aria-labelledby="compare-heading">
-        <h3 id="compare-heading">Vergleich mit Snapshot</h3>
-        <div class="compare-grid">
-          <div class="panel">
-            <div class="panel-title">Aktuell</div>
-            <div class="panel-row"><span>Monat</span><strong id="cmpNowMonth">—</strong></div>
-            <div class="panel-row"><span>Jahr</span><strong id="cmpNowYear">—</strong></div>
-            <div class="panel-row"><span>Ø/Monat</span><strong id="cmpNowAvg">—</strong></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">Snapshot</div>
-            <div class="panel-row"><span>Monat</span><strong id="cmpSnapMonth">—</strong></div>
-            <div class="panel-row"><span>Jahr</span><strong id="cmpSnapYear">—</strong></div>
-            <div class="panel-row"><span>Ø/Monat</span><strong id="cmpSnapAvg">—</strong></div>
-          </div>
-          <div class="panel delta">
-            <div class="panel-title">Δ</div>
-            <div class="panel-row"><span>Monat</span><strong id="cmpDeltaMonth">—</strong></div>
-            <div class="panel-row"><span>Jahr</span><strong id="cmpDeltaYear">—</strong></div>
-            <div class="panel-row"><span>Ø/Monat</span><strong id="cmpDeltaAvg">—</strong></div>
-          </div>
-        </div>
+    <footer class="site-footer" role="contentinfo">
+      <div class="container footer-inner">
+        <span class="small muted">IG Metall Entgeltrechner M+E Bayern</span>
+        <span class="small muted">Version <span id="appVersion"></span></span>
       </div>
-      <div id="atCompareResult" class="hidden"></div>
-    </section>
-  </main>
+    </footer>
 
-  <footer class="site-footer" role="contentinfo">
-    <div class="container small muted">Version <span id="appVersion"></span></div>
-  </footer>
-
-  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
   </div>
 </body>
 </html>
