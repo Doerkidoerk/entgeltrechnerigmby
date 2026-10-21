@@ -274,8 +274,9 @@ input:focus,select:focus{
 
 /* ==== Range Slider ==== */
 .range{touch-action:pan-y}
-input[type=range]{padding:0;height:36px;background:transparent;border:none}
 input[type=range]{
+  padding:0;
+  border:none;
   -webkit-appearance:none;
   appearance:none;
   height:6px;
@@ -430,6 +431,15 @@ html[data-theme="light"] .toast{background:rgba(0,0,0,.85)}
 .panel-row:last-child{border-bottom:none}
 .panel.delta .panel-title{color:var(--color-primary)}
 
+/* ==== Alerts ==== */
+.alert{
+  padding:var(--space-md);
+  border:1px solid var(--color-error);
+  border-radius:var(--radius-md);
+  background:rgba(255,107,107,.08);
+  color:var(--color-error);
+}
+
 /* ==== Icons ==== */
 .icon{font-weight:700}
 .pos{color:var(--color-success)}
@@ -488,7 +498,7 @@ button:focus-visible{
   border-bottom:1px solid #c00;
   text-align:center;
 }
-.hidden{display:none}
+.hidden{display:none !important}
 .hint{color:var(--color-text-muted)}
 .small{font-size:var(--font-size-base)}
 .muted{color:var(--color-text-muted)}
