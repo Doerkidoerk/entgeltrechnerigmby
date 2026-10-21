@@ -1,4 +1,6 @@
 {
+  "label": "01. Mai 2024",
+  "validFrom": "2024-05-01",
   "table": {
     "AJ1":  { "salary": 1124 },
     "AJ2":  { "salary": 1184 },

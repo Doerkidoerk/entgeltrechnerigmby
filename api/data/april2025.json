@@ -1,4 +1,7 @@
 {
+  "label": "01. April 2025",
+  "validFrom": "2025-04-01",
+  "azubiHint": "Hinweis: Die Auszubildendenvergütung 2025 gilt ab 01. Januar 2025.",
   "table": {
     "AJ1":  { "salary": 1264 },
     "AJ2":  { "salary": 1324 },
