@@ -75,7 +75,14 @@ PORT=3001
 ALLOWED_ORIGINS=https://entgeltrechner.example.com
 ```
 
-Weitere Variablen sind nicht erforderlich, da keine Authentifizierung oder Sessions mehr existieren.
+Optional:
+
+| Variable | Standard | Bedeutung |
+| --- | --- | --- |
+| `TRUST_PROXY` | `loopback` | Welchen Proxys Express die Client-IP (`X-Forwarded-For`) glaubt. Der Standard passt für nginx auf demselben Host. |
+| `RATE_LIMIT_MAX` | `100` | Anfragen pro 15 Minuten und Client-IP |
+
+Ungültige Werte führen zu einem Abbruch beim Start (siehe `journalctl -u entgeltrechner`).
 
 ---
 
@@ -108,7 +115,7 @@ systemctl daemon-reload
 systemctl enable --now entgeltrechner.service
 ```
 
-Der Health-Check ist unter `http://127.0.0.1:3001/api/health` erreichbar.
+Der Health-Check ist unter `http://127.0.0.1:3001/api/health` erreichbar. Er antwortet mit HTTP 503, solange keine gültige Tariftabelle geladen ist.
 
 ---
 
@@ -124,6 +131,11 @@ server {
     location / {
         root /opt/entgeltrechner/app/frontend;
         try_files $uri $uri/ /index.html;
+
+        # Sicherheits-Header für das statische Frontend (API-Antworten setzt Helmet)
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
     }
 
     location /api/ {
@@ -168,7 +180,7 @@ cd /opt/entgeltrechner/app
 sudo ./upgrade.sh
 ```
 
-Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installiert Abhängigkeiten und startet die Anwendung neu. Es erwartet keine Benutzer- oder Einladungstabellen mehr.
+Das Script erstellt Backups, stoppt den Service, aktualisiert den Code (`git pull --ff-only`), installiert Abhängigkeiten, startet die Anwendung neu und prüft den Health-Check. Schlägt dabei ein Schritt fehl, setzt es Code und Abhängigkeiten automatisch auf den vorherigen Stand zurück und startet den Service wieder.
 
 ---
 
@@ -178,7 +190,8 @@ Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installi
 | --- | --- |
 | Service startet nicht | `journalctl -u entgeltrechner -n 50` |
 | Kein Zugriff auf `/api` | Prüfen, ob Service auf Port 3001 läuft und nginx-Konfiguration korrekt ist |
-| Rate-Limit greift zu früh | `ALLOWED_ORIGINS` prüfen und ggf. zusätzliche Proxies berücksichtigen |
+| Rate-Limit greift zu früh | Läuft vor nginx ein weiterer Proxy (z. B. Load Balancer), `TRUST_PROXY` anpassen (Anzahl Hops oder IP-Liste); ggf. `RATE_LIMIT_MAX` erhöhen |
+| Tabelle fehlt in der Auswahl | Log prüfen: fehlerhafte JSON-Dateien werden mit Grund abgewiesen |
 | Falsche Tabellenwerte | JSON-Dateien in `api/data` kontrollieren |
 
 ---
@@ -187,16 +200,11 @@ Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installi
 
 Für lokale Entwicklung genügt:
 ```bash
-# API
 cd api
 npm install
 npm test
-node server.js
-
-# Frontend (in zweiter Shell)
-cd frontend
-npx serve -l 8080
+npm start
 ```
 
-Der Rechner ist anschließend unter `http://localhost:8080` verfügbar und ruft die API unter `http://127.0.0.1:3001` auf.
+Der Rechner ist anschließend unter `http://127.0.0.1:3001` verfügbar; der Server liefert API und Frontend gemeinsam aus.
 

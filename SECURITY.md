@@ -9,14 +9,16 @@ Diese Dokumentation beschreibt die aktuellen Sicherheitsmaßnahmen des Entgeltre
 ## 🔒 Implementierte Schutzmaßnahmen
 
 ### 1. API-Rate-Limiting
-- 100 Requests pro 15 Minuten und IP für sämtliche `/api`-Routen
+- 100 Requests pro 15 Minuten und Client-IP für die Tabellen- und Berechnungsrouten (konfigurierbar über `RATE_LIMIT_MAX`)
 - Schützt den öffentlich erreichbaren Rechner vor Missbrauch und übermäßiger Last
-- In Testumgebungen (`NODE_ENV=test`) deaktiviert
+- Hinter nginx wird die echte Client-IP aus `X-Forwarded-For` verwendet (`TRUST_PROXY`, Standard `loopback`). Ohne diese Einstellung hätten sich alle Nutzer ein gemeinsames Kontingent geteilt.
 
 ### 2. Sicherheits-Header via Helmet
 - `Content-Security-Policy` mit restriktiven Direktiven (`default-src 'self'`, `script-src 'self'`, usw.)
 - `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`
 - `crossOriginResourcePolicy` auf `same-site`
+- Helmet schützt nur Antworten der Node.js-Anwendung. Für das von nginx ausgelieferte Frontend enthält die Beispielkonfiguration in [INSTALL.md](./INSTALL.md) eine eigene CSP.
+- Das Frontend setzt alle dynamischen Werte über ein Template mit automatischem HTML-Escaping ein.
 
 ### 3. Strenge CORS-Konfiguration
 - Zugriff nur von vordefinierten Origins (konfigurierbar über `ALLOWED_ORIGINS`)
@@ -24,8 +26,9 @@ Diese Dokumentation beschreibt die aktuellen Sicherheitsmaßnahmen des Entgeltre
 
 ### 4. Eingabevalidierung
 - Sämtliche Berechnungsparameter werden mit Zod-Schemata geprüft
+- Tariftabellen werden beim Laden ebenfalls per Schema validiert; fehlerhafte Dateien werden abgewiesen
 - JSON-Body-Größe auf 20 kB begrenzt
-- Fehlende oder ungültige Felder lösen verständliche Fehlerantworten aus
+- Fehlende oder ungültige Felder lösen verständliche Fehlerantworten aus; Fehler werden immer als JSON ohne interne Details beantwortet
 
 ### 5. Logging & Monitoring
 - Zugriff über `morgan` im Combined-Format protokolliert
@@ -40,6 +43,8 @@ Diese Dokumentation beschreibt die aktuellen Sicherheitsmaßnahmen des Entgeltre
 | `NODE_ENV` | `development`, `production` oder `test` | `development` | Ja |
 | `PORT` | Port des API-Servers | `3001` | Optional |
 | `ALLOWED_ORIGINS` | Kommagetrennte Liste vertrauenswürdiger Origins | `https://entgeltrechner.cbmeyer.xyz` | Ja |
+| `TRUST_PROXY` | Vertrauenswürdige Proxys für die Client-IP (`true`/`false`, Anzahl Hops oder IP-Liste) | `loopback` | Optional |
+| `RATE_LIMIT_MAX` | Anfragen pro 15 Minuten und Client-IP | `100` | Optional |
 
 ---
 

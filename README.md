@@ -14,7 +14,7 @@ WebApp mit zwei Komponenten:
 **Wichtig:** Siehe [SECURITY.md](./SECURITY.md) für detaillierte Informationen zu allen Sicherheitsfeatures.
 
 Sicherheitsmaßnahmen in der öffentlichen Version:
-- **API-Rate-Limiting:** 100 Requests pro 15 Minuten und IP für alle Endpunkte
+- **API-Rate-Limiting:** 100 Requests pro 15 Minuten und Client-IP (konfigurierbar über `RATE_LIMIT_MAX`)
 - **CSP & Security-Header:** via Helmet vorkonfiguriert, Schutz vor XSS & MIME-Sniffing
 - **Strikte CORS-Allowlist:** Steuerbar über `ALLOWED_ORIGINS`
 - **Input-Validierung:** Zod-Schemata schützen die Berechnungs-Endpunkte vor ungültigen Eingaben
@@ -32,14 +32,10 @@ cd entgeltrechnerigmby
 # 2. API installieren und starten
 cd api
 npm install
-node server.js
-
-# 3. Frontend bereitstellen (in neuem Terminal)
-cd ../frontend
-npx serve -l 8080
+npm start
 ```
 
-Der API-Server läuft unter `http://127.0.0.1:3001`, das Frontend unter `http://localhost:8080`.
+Der Server liefert API und Frontend gemeinsam unter `http://127.0.0.1:3001` aus. In Produktion übernimmt nginx die statischen Dateien (siehe [INSTALL.md](./INSTALL.md)).
 
 Der Rechner ist ohne Anmeldung nutzbar und verwendet ausschließlich die öffentlichen `/api`-Endpunkte.
 
@@ -64,7 +60,28 @@ Erstellen Sie eine `.env`-Datei oder setzen Sie die folgenden Variablen:
 NODE_ENV=production
 PORT=3001
 ALLOWED_ORIGINS=https://ihredomain.de
+# optional:
+# TRUST_PROXY=loopback     # Standard: dem lokalen Reverse Proxy vertrauen
+# RATE_LIMIT_MAX=100       # Anfragen pro 15 Minuten und Client-IP
 ```
+
+Ungültige Werte (z. B. `PORT=abc`) führen zu einem Abbruch beim Start mit klarer Fehlermeldung.
+
+## Tariftabellen
+
+Jede Datei in `api/data/*.json` ist eine Tariftabelle; der Dateiname ist der Schlüssel. Neue Tabellen werden ohne Code-Änderung erkannt und zur Laufzeit nachgeladen:
+
+```json
+{
+  "label": "01. April 2026",
+  "validFrom": "2026-04-01",
+  "azubiHint": "optionaler Hinweis für Auszubildende",
+  "table": { "EG01": { "salary": 2741 }, "EG05": { "A": 3497, "B": 3583 } },
+  "atMin": { "35": { "monat": 8678.25, "jahr": 107730.00 } }
+}
+```
+
+Das Frontend wählt automatisch die Tabelle mit dem jüngsten `validFrom` ≤ heute. Fehlerhafte Dateien werden beim Laden abgewiesen (Log-Eintrag); beim Neuladen bleibt die zuletzt gültige Version aktiv.
 
 ## Tests
 
@@ -93,6 +110,7 @@ Das Script führt automatisch durch:
 - Berechtigungen prüfen
 - Service neu starten
 - Health-Check
+- Automatischer Rollback, falls ein Schritt nach dem Stoppen des Service fehlschlägt
 
 **Wichtig:** Vor jedem Update `CHANGELOG.md` auf Breaking Changes prüfen!
 
@@ -107,8 +125,14 @@ Das Script führt automatisch durch:
 ```
 entgeltrechnerigmby/
 ├── api/
-│   ├── server.js           # Express-Server & API
-│   ├── server.test.js      # Jest-Tests
+│   ├── server.js           # Einstiegspunkt: Konfiguration, Tabellen laden, Server starten
+│   ├── lib/
+│   │   ├── app.js          # Express-App, Routen, Fehlerbehandlung
+│   │   ├── calculate.js    # Entgeltberechnung (reine Funktion)
+│   │   ├── config.js       # Umgebungsvariablen einlesen & prüfen
+│   │   ├── schemas.js      # Zod-Schemata für Eingaben und Tabellendateien
+│   │   └── tables.js       # Laden, Validieren & Überwachen der Tariftabellen
+│   ├── test/               # Jest-Tests
 │   ├── package.json
 │   └── data/               # Tariftabellen (JSON)
 │       ├── mai2024.json
@@ -117,9 +141,11 @@ entgeltrechnerigmby/
 ├── frontend/
 │   ├── index.html          # Hauptseite (Rechner)
 │   └── assets/
-│       └── app.js          # Hauptlogik
+│       ├── app.js          # Hauptlogik (ES-Modul)
+│       └── style.css
 ├── INSTALL.md              # Ausführliche Installationsanleitung
 ├── SECURITY.md             # Sicherheitsdokumentation
+├── CHANGELOG.md            # Versionshistorie
 ├── README.md               # Diese Datei
 └── upgrade.sh              # Update-Script
 ```
