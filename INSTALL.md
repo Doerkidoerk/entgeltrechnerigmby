@@ -75,6 +75,13 @@ PORT=3001
 ALLOWED_ORIGINS=https://entgeltrechner.example.com
 ```
 
+Optional lässt sich das Rate-Limit anpassen (Standard: 1000 Requests pro 15 Minuten und IP):
+
+```dotenv
+RATE_LIMIT_MAX=1000
+RATE_LIMIT_WINDOW_MS=900000
+```
+
 Weitere Variablen sind nicht erforderlich, da keine Authentifizierung oder Sessions mehr existieren.
 
 ---

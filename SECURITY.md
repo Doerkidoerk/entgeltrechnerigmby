@@ -9,7 +9,9 @@ Diese Dokumentation beschreibt die aktuellen Sicherheitsmaßnahmen des Entgeltre
 ## 🔒 Implementierte Schutzmaßnahmen
 
 ### 1. API-Rate-Limiting
-- 100 Requests pro 15 Minuten und IP für sämtliche `/api`-Routen
+- 1000 Requests pro 15 Minuten und IP für sämtliche `/api`-Routen
+- Anpassbar über `RATE_LIMIT_MAX` und `RATE_LIMIT_WINDOW_MS` (Millisekunden)
+- Der Wert ist bewusst großzügig: Das Frontend rechnet live und sendet bei jeder Eingabe (auch beim Ziehen der Schieberegler) eine Anfrage
 - Schützt den öffentlich erreichbaren Rechner vor Missbrauch und übermäßiger Last
 - In Testumgebungen (`NODE_ENV=test`) deaktiviert
 

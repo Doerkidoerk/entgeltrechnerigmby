@@ -9,6 +9,10 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 - Automatisches `upgrade.sh` Script für Produktions-Updates
+- Rate-Limit über `RATE_LIMIT_MAX` und `RATE_LIMIT_WINDOW_MS` konfigurierbar
+
+### Geändert
+- Standard-Rate-Limit von 100 auf 1000 Requests pro 15 Minuten angehoben, da die Live-Berechnung bei jeder Eingabe eine Anfrage sendet und Nutzer sonst nach wenigen Minuten „Too many requests“ erhielten
 
 ---
 
