@@ -14,7 +14,7 @@ WebApp mit zwei Komponenten:
 **Wichtig:** Siehe [SECURITY.md](./SECURITY.md) für detaillierte Informationen zu allen Sicherheitsfeatures.
 
 Sicherheitsmaßnahmen in der öffentlichen Version:
-- **API-Rate-Limiting:** 100 Requests pro 15 Minuten und IP für alle Endpunkte
+- **API-Rate-Limiting:** 1000 Requests pro 15 Minuten und IP für alle Endpunkte (anpassbar über `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS`)
 - **CSP & Security-Header:** via Helmet vorkonfiguriert, Schutz vor XSS & MIME-Sniffing
 - **Strikte CORS-Allowlist:** Steuerbar über `ALLOWED_ORIGINS`
 - **Input-Validierung:** Zod-Schemata schützen die Berechnungs-Endpunkte vor ungültigen Eingaben
@@ -64,6 +64,9 @@ Erstellen Sie eine `.env`-Datei oder setzen Sie die folgenden Variablen:
 NODE_ENV=production
 PORT=3001
 ALLOWED_ORIGINS=https://ihredomain.de
+# optional, Standardwerte:
+# RATE_LIMIT_MAX=1000
+# RATE_LIMIT_WINDOW_MS=900000
 ```
 
 ## Tests

@@ -16,17 +16,22 @@ const PORT = process.env.PORT || 3001;
 const DATA_DIR = path.join(__dirname, "data");
 const TARIFF_ORDER = ["mai2024", "april2025", "april2026"]; // custom sort order
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://entgeltrechner.cbmeyer.xyz").split(",");
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 1000;
 
 // Rate limiters
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 Minuten
-  max: 100, // max 100 Requests
+  windowMs: RATE_LIMIT_WINDOW_MS, // Standard: 15 Minuten
+  max: RATE_LIMIT_MAX, // Standard: 1000 Requests (Live-Berechnung sendet bei jeder Eingabe)
   message: { error: "Too many requests. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => process.env.NODE_ENV === "test"
 });
 
+// Die API lauscht nur auf 127.0.0.1 hinter nginx: Client-IP aus X-Forwarded-For übernehmen,
+// sonst teilen sich alle Nutzer das Rate-Limit der Proxy-Adresse
+app.set("trust proxy", "loopback");
 app.disable("x-powered-by");
 app.use(helmet({
   contentSecurityPolicy: {
