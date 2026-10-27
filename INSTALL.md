@@ -185,7 +185,7 @@ Das Script stoppt den Service, erstellt Backups, aktualisiert den Code, installi
 | --- | --- |
 | Service startet nicht | `journalctl -u entgeltrechner -n 50` |
 | Kein Zugriff auf `/api` | Prüfen, ob Service auf Port 3001 läuft und nginx-Konfiguration korrekt ist |
-| Rate-Limit greift zu früh | `ALLOWED_ORIGINS` prüfen und ggf. zusätzliche Proxies berücksichtigen |
+| Rate-Limit greift zu früh | Prüfen, ob nginx `X-Forwarded-For` setzt (siehe Abschnitt nginx); liegt ein weiterer Proxy/CDN davor, `trust proxy` in `server.js` anpassen; ggf. `RATE_LIMIT_MAX` erhöhen |
 | Falsche Tabellenwerte | JSON-Dateien in `api/data` kontrollieren |
 
 ---

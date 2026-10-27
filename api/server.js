@@ -29,6 +29,9 @@ const apiLimiter = rateLimit({
   skip: (req) => process.env.NODE_ENV === "test"
 });
 
+// Die API lauscht nur auf 127.0.0.1 hinter nginx: Client-IP aus X-Forwarded-For übernehmen,
+// sonst teilen sich alle Nutzer das Rate-Limit der Proxy-Adresse
+app.set("trust proxy", "loopback");
 app.disable("x-powered-by");
 app.use(helmet({
   contentSecurityPolicy: {

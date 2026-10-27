@@ -11,6 +11,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - Automatisches `upgrade.sh` Script für Produktions-Updates
 - Rate-Limit über `RATE_LIMIT_MAX` und `RATE_LIMIT_WINDOW_MS` konfigurierbar
 
+### Behoben
+- Rate-Limit galt hinter nginx für alle Nutzer gemeinsam, da ohne `trust proxy` jede Anfrage von 127.0.0.1 kam; die Client-IP wird jetzt aus `X-Forwarded-For` übernommen
+
 ### Geändert
 - Standard-Rate-Limit von 100 auf 1000 Requests pro 15 Minuten angehoben, da die Live-Berechnung bei jeder Eingabe eine Anfrage sendet und Nutzer sonst nach wenigen Minuten „Too many requests“ erhielten
 

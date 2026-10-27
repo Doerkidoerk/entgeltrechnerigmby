@@ -10,6 +10,7 @@ Diese Dokumentation beschreibt die aktuellen Sicherheitsmaßnahmen des Entgeltre
 
 ### 1. API-Rate-Limiting
 - 1000 Requests pro 15 Minuten und IP für sämtliche `/api`-Routen
+- Die Client-IP wird hinter nginx aus `X-Forwarded-For` ermittelt (`trust proxy: loopback`), sodass das Limit pro Nutzer und nicht für alle gemeinsam gilt
 - Anpassbar über `RATE_LIMIT_MAX` und `RATE_LIMIT_WINDOW_MS` (Millisekunden)
 - Der Wert ist bewusst großzügig: Das Frontend rechnet live und sendet bei jeder Eingabe (auch beim Ziehen der Schieberegler) eine Anfrage
 - Schützt den öffentlich erreichbaren Rechner vor Missbrauch und übermäßiger Last

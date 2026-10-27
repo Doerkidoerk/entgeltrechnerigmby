@@ -75,3 +75,10 @@ describe('POST /api/calc ohne Anmeldung', () => {
     expect(res.body.breakdown.tZugB).toBeCloseTo(233.84, 2);
   });
 });
+
+describe('Proxy-Konfiguration', () => {
+  test('vertraut nur dem lokalen Proxy bei X-Forwarded-For', () => {
+    expect(app.get('trust proxy fn')('127.0.0.1')).toBe(true);
+    expect(app.get('trust proxy fn')('203.0.113.7')).toBe(false);
+  });
+});
